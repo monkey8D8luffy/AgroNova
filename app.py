@@ -101,7 +101,25 @@ with st.sidebar:
     st.markdown("### 🎯 Goals (SDGs)")
     st.info("✅ SDG 2: Zero Hunger")
     st.info("✅ SDG 13: Climate Action")
+# ... inside the sidebar, after api_key is loaded ...
+    
+    if api_key:
+        try:
+            genai.configure(api_key=api_key)
+            st.success("API Key Loaded! ✅")
+            
+            # --- DEBUGGING: PRINT AVAILABLE MODELS ---
+            st.write("🔍 **Available Models for your Key:**")
+            try:
+                for m in genai.list_models():
+                    if 'generateContent' in m.supported_generation_methods:
+                        st.code(m.name)
+            except Exception as e:
+                st.error(f"Could not list models: {e}")
+            # -----------------------------------------
 
+        except Exception as e:
+            st.error("Invalid API Key")
 # --- GEMINI MODEL FUNCTION ---
 def get_gemini_response(prompt, lang_pref):
     if not api_key:

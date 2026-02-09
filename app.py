@@ -108,7 +108,7 @@ def get_gemini_response(prompt, lang_pref):
         return "⚠️ Please enter your API Key in the sidebar or .env file to start."
     
     try:
-        model = genai.GenerativeModel('gemini-pro')
+        model = genai.GenerativeModel('gemini-1.5-flash')
         full_prompt = f"""
         You are AgroNova, an expert agricultural AI assistant designed to support farmers globally. 
         Your goals are aligned with UN SDG 2 (Zero Hunger) and SDG 13 (Climate Action).

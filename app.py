@@ -20,17 +20,16 @@ st.markdown("""
     /* 1. GLOBAL RESET & WHITE THEME */
     .stApp {
         background-color: #FFFFFF !important;
-        color: #111111 !important;
     }
     
-    /* 2. REMOVE STREAMLIT DEFAULT PADDING to center things */
+    /* 2. REMOVE PADDING to center things */
     .block-container {
         padding-top: 5rem !important;
         padding-bottom: 5rem !important;
         max_width: 900px !important;
     }
 
-    /* 3. HERO TYPOGRAPHY (Like the Figma Headline) */
+    /* 3. HERO TYPOGRAPHY */
     .hero-title {
         font-family: 'Inter', sans-serif;
         font-size: 64px !important;
@@ -45,49 +44,66 @@ st.markdown("""
     .hero-subtitle {
         font-family: 'Inter', sans-serif;
         font-size: 20px;
-        color: #666666;
+        color: #666666 !important;
         text-align: center;
         margin-bottom: 40px;
         font-weight: 400;
     }
 
-    /* 4. CENTERED INPUT BOX STYLING */
-    /* This hacks the default streamlit text area to look like a centerpiece */
+    /* 4. CENTERED INPUT BOX STYLING (Fixed Visibility) */
     .stTextArea textarea {
         background-color: #F8F9FA !important;
+        color: #111111 !important; /* FORCE BLACK TEXT */
         border: 1px solid #E0E0E0 !important;
         border-radius: 20px !important;
-        font-size: 18px;
+        font-size: 18px !important;
         padding: 20px !important;
         box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important;
-        transition: box-shadow 0.3s ease;
-        height: 150px !important; /* Make it tall like the Figma box */
+        height: 150px !important;
     }
     .stTextArea textarea:focus {
         box-shadow: 0 8px 24px rgba(0,0,0,0.1) !important;
         border-color: #1B5E20 !important;
     }
-
-    /* 5. PILL BUTTONS (The quick prompts below input) */
-    div.stButton > button {
-        background-color: #FFFFFF;
-        color: #333333;
-        border: 1px solid #E0E0E0;
-        border-radius: 30px;
-        padding: 10px 24px;
-        font-size: 14px;
-        font-weight: 500;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-        transition: all 0.2s ease-in-out;
+    /* Placeholder Color Fix */
+    .stTextArea textarea::placeholder {
+        color: #888888 !important;
     }
-    div.stButton > button:hover {
-        background-color: #F1F8E9;
-        border-color: #1B5E20;
-        color: #1B5E20;
+
+    /* 5. SUBMIT BUTTON STYLING (The 'Ask AI' Arrow) */
+    [data-testid="stFormSubmitButton"] > button {
+        background-color: #1B5E20 !important; /* Green Button */
+        color: #FFFFFF !important; /* White Text */
+        border: none !important;
+        border-radius: 50px !important;
+        padding: 10px 25px !important;
+        font-weight: bold !important;
+        box-shadow: 0 4px 10px rgba(27, 94, 32, 0.3) !important;
+        transition: all 0.3s ease;
+    }
+    [data-testid="stFormSubmitButton"] > button:hover {
+        background-color: #4CAF50 !important;
         transform: translateY(-2px);
     }
+
+    /* 6. PILL BUTTONS (Quick Prompts) */
+    div.stButton > button {
+        background-color: #FFFFFF !important;
+        color: #333333 !important;
+        border: 1px solid #E0E0E0 !important;
+        border-radius: 30px !important;
+        padding: 10px 24px !important;
+        font-size: 14px !important;
+        font-weight: 500;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02) !important;
+    }
+    div.stButton > button:hover {
+        background-color: #F1F8E9 !important;
+        border-color: #1B5E20 !important;
+        color: #1B5E20 !important;
+    }
     
-    /* 6. RESPONSE CARD STYLE */
+    /* 7. RESPONSE CARD STYLE */
     .response-box {
         background-color: #F1F8E9;
         border-radius: 16px;
@@ -95,6 +111,10 @@ st.markdown("""
         margin-top: 30px;
         border: 1px solid #C8E6C9;
         box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+    }
+    /* Force text inside response box to be dark */
+    .response-box, .response-box p, .response-box div {
+        color: #111111 !important;
     }
 
     /* Hide default elements */
@@ -117,30 +137,26 @@ with st.sidebar:
     language = st.selectbox("Language", ["English", "Hindi", "Marathi", "Spanish"])
 
 # --- MAIN HERO SECTION ---
-# 1. Big Headline
 st.markdown('<div class="hero-title">Your AI Farming Tool,<br>Now in AgroNova</div>', unsafe_allow_html=True)
 st.markdown('<div class="hero-subtitle">Ask about crops, pests, or weather in Maharashtra</div>', unsafe_allow_html=True)
 
 # --- CENTERED INPUT LOGIC ---
-# We use a form so the user can type and hit "Ctrl+Enter" or click a button
 with st.form(key='search_form'):
-    col_center = st.columns([1, 10, 1])[1] # Center align hack
+    col_center = st.columns([1, 10, 1])[1] 
     with col_center:
         user_input = st.text_area(
             label="Input", 
             label_visibility="collapsed",
-            placeholder="Describe your farming issue here... (e.g., 'White spots on tomato leaves')",
+            placeholder="Type your question here... (e.g., 'How to treat white spots on tomato leaves?')",
         )
         
-        # Action Row inside the form (Submit button on right)
+        # Action Row inside the form
         c1, c2, c3 = st.columns([6, 1, 1])
         with c3:
             submit_button = st.form_submit_button(label="Ask AI ➔")
 
-# --- QUICK PROMPT PILLS (Like Figma's bottom buttons) ---
-# THIS WAS THE BROKEN LINE:
+# --- QUICK PROMPT PILLS ---
 st.markdown("<br>", unsafe_allow_html=True) 
-
 col1, col2, col3 = st.columns(3)
 
 # Logic to handle Pill Clicks
@@ -165,7 +181,6 @@ if final_query:
     if not api_key:
         st.error("Please enter your API Key in the sidebar first.")
     else:
-        # Show a clean loading state
         with st.spinner("Analyzing..."):
             try:
                 model = genai.GenerativeModel('gemini-2.5-flash')
@@ -176,7 +191,7 @@ if final_query:
                 """
                 response = model.generate_content(full_prompt)
                 
-                # Render the result in a nice card
+                # Render the result
                 st.markdown(f"""
                 <div class="response-box">
                     <h3 style="color:#1B5E20; margin-top:0;">🌱 AgroNova Advice</h3>

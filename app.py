@@ -2,330 +2,235 @@ import streamlit as st
 import google.generativeai as genai
 import os
 from dotenv import load_dotenv
-import pandas as pd
-import numpy as np
-from PIL import Image
 
 # Load environment variables
 load_dotenv()
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
-    page_title="AgroNova | Smart Farm",
+    page_title="AgroNova | AI Farming",
     page_icon="🌱",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
-# --- CUSTOM THEME CSS ---
+# --- CSS STYLING (High Contrast & Interactive) ---
 st.markdown("""
 <style>
-    /* 1. MAIN BACKGROUND */
+    /* 1. GLOBAL THEME */
     .stApp {
-        background-color: #658364 !important; /* Sage Green */
-    }
-
-    /* 2. SIDEBAR BACKGROUND */
-    [data-testid="stSidebar"] {
-        background-color: #2D4B2E !important; /* Dark Forest Green */
-        color: white !important;
-    }
-    [data-testid="stSidebar"] label, [data-testid="stSidebar"] span, [data-testid="stSidebar"] p {
-        color: white !important;
-    }
-
-    /* 3. DASHBOARD CARDS/BOXES */
-    .dashboard-card {
-        background-color: #2D4B2E;
-        border: 1px solid #3E5C3F;
-        padding: 20px;
-        border-radius: 15px;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        margin-bottom: 20px;
-        color: white;
-    }
-    .card-title {
-        color: #A0CFA0; /* Light Green for titles */
-        font-size: 16px;
-        font-weight: 600;
-        margin-bottom: 10px;
-        text-transform: uppercase;
-    }
-    .metric-value {
-        color: white;
-        font-size: 28px;
-        font-weight: 700;
-    }
-    .metric-subtext {
-        color: #C0E0C0;
-        font-size: 14px;
-    }
-
-    /* 4. CHAT INTERFACE */
-    .stTextArea textarea {
-        background-color: #3E5C3F !important;
-        color: white !important;
-        border: 1px solid #507051 !important;
-        border-radius: 12px !important;
-    }
-    .stTextArea textarea::placeholder {
-        color: #A0CFA0 !important;
+        background-color: #FFFFFF !important;
+        color: #111111 !important;
     }
     
-    /* Chat Bubbles */
+    /* 2. TYPOGRAPHY */
+    .hero-title {
+        font-family: 'Inter', sans-serif;
+        font-size: 48px !important;
+        font-weight: 800;
+        text-align: center;
+        color: #1B5E20 !important;
+        margin-top: -40px;
+        margin-bottom: 20px;
+    }
+
+    /* 3. INTERACTIVE SEARCH BAR (The Glow Effect) */
+    .stTextArea textarea {
+        background-color: #F8F9FA !important;
+        color: #000000 !important; /* Force Black Text */
+        border: 2px solid #E0E0E0 !important;
+        border-radius: 25px !important;
+        font-size: 18px !important;
+        padding: 20px !important;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
+        transition: all 0.3s ease-in-out;
+    }
+    /* Focus State: Green Glow */
+    .stTextArea textarea:focus {
+        border-color: #4CAF50 !important;
+        box-shadow: 0 0 15px rgba(76, 175, 80, 0.3) !important;
+        transform: scale(1.01);
+    }
+    .stTextArea textarea::placeholder {
+        color: #666666 !important;
+    }
+
+    /* 4. CHAT BUBBLES (History Above) */
     .chat-user {
-        background-color: #4CAF50; /* Bright Green */
-        color: white;
-        padding: 12px 18px;
-        border-radius: 18px 18px 0 18px;
-        margin: 8px 0;
+        background-color: #F1F8E9;
+        padding: 15px 20px;
+        border-radius: 20px 20px 0 20px;
+        margin: 10px 0;
+        color: #1B5E20;
+        text-align: right;
+        font-weight: 500;
+        border: 1px solid #C8E6C9;
+        display: inline-block;
         float: right;
         clear: both;
-        font-size: 15px;
         max-width: 80%;
     }
     .chat-ai {
-        background-color: #3E5C3F;
-        color: white;
-        padding: 12px 18px;
-        border-radius: 0 18px 18px 18px;
-        margin: 8px 0;
+        background-color: #FFFFFF;
+        padding: 20px;
+        border-radius: 0 20px 20px 20px;
+        margin: 10px 0;
+        color: #333333;
+        border: 1px solid #E0E0E0;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        display: inline-block;
         float: left;
         clear: both;
-        font-size: 15px;
-        max-width: 80%;
+        max-width: 90%;
+    }
+    
+    /* 5. PROMPT TAGS (Pills below search) */
+    div.stButton > button {
+        background-color: #FFFFFF !important;
+        color: #333333 !important;
+        border: 1px solid #DDDDDD !important;
+        border-radius: 50px !important;
+        padding: 8px 16px !important;
+        font-size: 13px !important;
+        margin: 5px !important;
+        transition: all 0.2s;
+    }
+    div.stButton > button:hover {
+        background-color: #E8F5E9 !important;
+        border-color: #4CAF50 !important;
+        color: #1B5E20 !important;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
     }
 
-    /* 5. GENERAL TEXT & BUTTONS */
-    h1, h2, h3, h4, p, label, span, div {
-        color: white;
-    }
-    .stButton>button {
-        background-color: #4CAF50 !important;
-        color: white !important;
-        border-radius: 8px;
-        border: none;
-        font-weight: bold;
-        padding: 0.5rem 1rem;
-    }
-    .stButton>button:hover {
-        background-color: #45a049 !important;
-    }
-    
-    /* Remove default padding */
-    .block-container {
-        padding-top: 2rem;
-        padding-bottom: 2rem;
-    }
-    
-    /* 6. PROFILE PHOTO STYLING (The Fix) */
-    /* This targets ANY image inside the sidebar and makes it round */
-    [data-testid="stSidebar"] img {
-        border-radius: 50%;
-        border: 3px solid #4CAF50;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-        object-fit: cover;
-        display: block;
-        margin-left: auto;
-        margin-right: auto;
-    }
+    /* Hide standard elements */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
-# --- MOCK DATA HELPERS ---
-def get_location_data(state):
-    data = {
-        "Maharashtra": {"region": "Pune", "weather": {"temp": "28°C", "cond": "Sunny", "hum": "45%"}, "crops": ["Sugarcane", "Cotton", "Mango"], "harvest_days": 12},
-        "Punjab": {"region": "Amritsar", "weather": {"temp": "34°C", "cond": "Clear", "hum": "30%"}, "crops": ["Wheat", "Rice", "Maize"], "harvest_days": 45},
-        "Karnataka": {"region": "Bengaluru", "weather": {"temp": "24°C", "cond": "Cloudy", "hum": "65%"}, "crops": ["Coffee", "Ragi", "Sunflower"], "harvest_days": 30}
-    }
-    return data.get(state, data["Maharashtra"])
-
-def get_soil_moisture(water_cond):
-    return "High (Optimal)" if water_cond == "Irrigated" else "Medium (Needs Rain)"
-
-# --- SIDEBAR: PROFILE & SETTINGS ---
+# --- SIDEBAR SETTINGS ---
 with st.sidebar:
-    st.markdown("## 👤 Farmer Profile")
-    
-    # 1. Profile Photo (Fixed: Removed invalid 'className')
-    uploaded_file = st.file_uploader("Upload Photo", type=["jpg", "png", "jpeg"], label_visibility="collapsed")
-    if uploaded_file is not None:
-        image = Image.open(uploaded_file)
-        # ERROR FIXED HERE:
-        st.image(image, width=120)
-    else:
-        # ERROR FIXED HERE:
-        st.image("https://cdn-icons-png.flaticon.com/512/3135/3135715.png", width=120)
-        
-    # 2. Name
-    if "name" not in st.session_state:
-        st.session_state["name"] = "Rajesh Kumar"
-    
-    farmer_name = st.text_input("Name", value=st.session_state["name"])
-    st.session_state["name"] = farmer_name
-    
-    st.markdown("---")
-    st.markdown("### ⚙️ Farm Settings")
-
-    # 3. API Key
+    st.markdown("### ⚙️ Settings")
     api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
-        api_key = st.text_input("🔑 Google API Key", type="password")
-    if api_key: genai.configure(api_key=api_key)
-
-    # 4. Language (Real-time update)
-    language = st.selectbox("🗣️ Language", ["English", "Hindi (हिंदी)", "Marathi (मराठी)", "Punjabi (ਪੰਜਾਬੀ)"])
+        api_key = st.text_input("🔑 API Key", type="password")
     
-    # 5. Location & Conditions (Drives Dashboard Data)
-    state = st.selectbox("📍 State", ["Maharashtra", "Punjab", "Karnataka"])
+    if api_key:
+        genai.configure(api_key=api_key)
     
-    loc_data = get_location_data(state)
-    region = st.text_input("Region/District", value=loc_data["region"], disabled=True)
-    
-    water_cond = st.selectbox("💧 Water Source", ["Irrigated", "Rainfed"])
+    language = st.selectbox("Language / भाषा", ["English", "Marathi (मराठी)", "Hindi (हिंदी)"])
+    st.info("📍 Region: Maharashtra")
 
-    st.success(f"Settings Updated for {state}!")
+# --- APP LOGIC ---
 
-# --- MAIN DASHBOARD ---
+# 1. Initialize History
+if "history" not in st.session_state:
+    st.session_state.history = []
 
-# 1. Header
-st.markdown(f"# 🌿 Welcome, {farmer_name}!")
-st.markdown(f"### *Farm Dashboard for {region}, {state}*")
-st.write("") # Spacer
+# 2. Hero Title
+st.markdown('<div class="hero-title">AgroNova</div>', unsafe_allow_html=True)
 
-# 2. Main Grid
-col_left, col_center, col_right = st.columns([1, 2, 1])
-
-# ================= LEFT COLUMN: STATUS & TASKS =================
-with col_left:
-    # Dynamic Soil Health Card
-    moisture_status = get_soil_moisture(water_cond)
-    st.markdown(f"""
-    <div class="dashboard-card">
-        <div class="card-title">🌱 Soil Status</div>
-        <div class="metric-value">{moisture_status}</div>
-        <div class="metric-subtext">Based on: {water_cond}</div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Dynamic Harvest Card
-    st.markdown(f"""
-    <div class="dashboard-card">
-        <div class="card-title">🚜 Next Harvest</div>
-        <div class="metric-value">{loc_data['harvest_days']} Days</div>
-        <div class="metric-subtext">Primary Crop: {loc_data['crops'][0]}</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # Task Checklist
-    st.markdown('<div class="dashboard-card"><div class="card-title">📋 This Week\'s Tasks</div>', unsafe_allow_html=True)
-    st.checkbox("Apply fertilizer (Field B)")
-    st.checkbox("Check irrigation pumps")
-    st.checkbox(f"Scout for pests in {loc_data['crops'][1]}")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# ================= CENTER COLUMN: AI CHAT (Shifted Here) =================
-with col_center:
-    st.markdown('<div class="dashboard-card" style="min-height: 600px;">', unsafe_allow_html=True)
-    st.markdown('<div class="card-title" style="font-size:20px;">🤖 AgroNova AI Assistant</div>', unsafe_allow_html=True)
-    st.markdown(f"*(Responding in {language} for {state} region)*")
-    st.write("---")
-
-    # Chat History Container
-    chat_container = st.container()
-    if "profile_history" not in st.session_state:
-        st.session_state.profile_history = []
-        # Initial greeting
-        st.session_state.profile_history.append({"role": "assistant", "content": f"Hello {farmer_name}! I'm set up for your farm in {state}. How can I help you today?"})
-
-    with chat_container:
-        for chat in st.session_state.profile_history:
-            role_class = "chat-user" if chat["role"] == "user" else "chat-ai"
-            st.markdown(f'<div class="{role_class}">{chat["content"]}</div>', unsafe_allow_html=True)
-        st.markdown('<div style="clear:both;"></div>', unsafe_allow_html=True)
-
-    # Chat Input
-    st.write("") # Spacer
-    with st.form(key="profile_chat_form"):
-        user_input = st.text_area("Message", height=100, label_visibility="collapsed", placeholder="Ask about crops, weather, or pests...")
-        cols = st.columns([5, 1])
-        with cols[1]:
-            submit_btn = st.form_submit_button("Send ➔")
-
-    if submit_btn and user_input:
-        if not api_key:
-            st.error("⚠️ Please enter API Key in sidebar.")
+# 3. DISPLAY CHAT HISTORY (Above Search Bar)
+chat_container = st.container()
+with chat_container:
+    for chat in st.session_state.history:
+        if chat["role"] == "user":
+            st.markdown(f'<div class="chat-user">{chat["content"]}</div>', unsafe_allow_html=True)
         else:
-            # Add User Msg
-            st.session_state.profile_history.append({"role": "user", "content": user_input})
-            
-            # Generate AI Response with Profile Context
-            with st.spinner("Thinking..."):
-                try:
-                    model = genai.GenerativeModel('gemini-2.5-flash')
-                    context_prompt = f"""
-                    Act as an expert agronomist.
-                    **Farmer Profile:**
-                    - Name: {farmer_name}
-                    - Location: {region}, {state}, India
-                    - Water Source: {water_cond}
-                    - Key Crops: {', '.join(loc_data['crops'])}
-                    - Language Preference: {language}
-                    
-                    **User Query:** {user_input}
-                    
-                    **Instructions:**
-                    - Respond in {language}.
-                    - Be practical, brief, and specific to their location and conditions.
-                    """
-                    response = model.generate_content(context_prompt)
-                    st.session_state.profile_history.append({"role": "assistant", "content": response.text})
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Error: {e}")
+            st.markdown(f'<div class="chat-ai"><b>🌱 AgroNova:</b><br>{chat["content"]}</div>', unsafe_allow_html=True)
+    
+    # Add a spacer so the history doesn't hide behind the input immediately
+    st.markdown("<div style='clear: both; margin-bottom: 20px;'></div>", unsafe_allow_html=True)
 
-    st.markdown('</div>', unsafe_allow_html=True)
+# 4. SEARCH BAR (Center Stage)
+st.write("---") # Visual separator
+with st.form(key='search_form'):
+    col_input, col_btn = st.columns([6, 1])
+    
+    with col_input:
+        user_input = st.text_area(
+            label="Query", 
+            label_visibility="collapsed",
+            placeholder="Ask anything... (e.g., 'Soybean rust treatment')",
+            height=80
+        )
+    
+    with col_btn:
+        st.write("") # Spacer to align button
+        st.write("") 
+        submit_btn = st.form_submit_button("Ask ➔")
 
-# ================= RIGHT COLUMN: WEATHER & INSIGHTS =================
-with col_right:
-    # Dynamic Weather Card
-    w = loc_data['weather']
-    st.markdown(f"""
-    <div class="dashboard-card">
-        <div class="card-title">🌤️ Weather in {region}</div>
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div>
-                <span style="font-size:36px; font-weight:bold;">{w['temp']}</span><br>
-                <span style="font-size:16px;">{w['cond']}</span>
-            </div>
-            <div style="text-align:right; font-size:14px;">
-                <div>💧 Hum: {w['hum']}</div>
-                <div>💨 Wind: 15 km/h</div>
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+# 5. MAHARASHTRA PROMPTS (10 Common Questions)
+st.markdown("### ⚡ Quick Prompts for Maharashtra:")
 
-    # Crop Recommendations Card
-    st.markdown(f"""
-    <div class="dashboard-card">
-        <div class="card-title">🌾 Recommended Crops</div>
-        <div class="metric-subtext">Best for {state}'s current season:</div>
-        <ul style="padding-left: 20px; margin-top: 10px; font-size: 15px;">
-            <li><b>{loc_data['crops'][0]}</b> (Primary)</li>
-            <li>{loc_data['crops'][1]}</li>
-            <li>{loc_data['crops'][2]}</li>
-        </ul>
-    </div>
-    """, unsafe_allow_html=True)
+# Define prompts relevant to MH agriculture
+mh_prompts = {
+    "🥭 Alphonso Care": "Care tips for Alphonso Mango flowering stage?",
+    "🧅 Onion Storage": "How to store onions to prevent rotting in Nashik climate?",
+    "🍂 Soybean Rust": "Best fungicide for Soybean Rust disease?",
+    "🦠 Cotton Bollworm": "Organic control for Pink Bollworm in Cotton?",
+    "🌾 Sugarcane Yield": "Fertilizer schedule for high Sugarcane yield?",
+    "🌧️ Monsoon Tips": "Farming tips for delayed monsoon in Maharashtra?",
+    "🍅 Tomato Blight": "Treating early blight in Tomato plants?",
+    "💰 PM Kisan": "How to check PM Kisan Samman Nidhi status?",
+    "🍇 Grape Pruning": "Right time for October pruning in Grapes?",
+    "🐄 Dairy Diet": "Balanced diet for buffaloes to increase milk fat?"
+}
 
-    # Quick Prompts Card
-    st.markdown('<div class="dashboard-card"><div class="card-title">💡 Quick Ideas</div>', unsafe_allow_html=True)
-    if st.button(f"Pest control for {loc_data['crops'][0]}?"):
-        # Logic to submit this query could go here, for now it's visual
-        st.info("Ask this in the chat box!")
-    st.write("")
-    if st.button(f"Fertilizer plan for {water_cond} soil?"):
-        st.info("Ask this in the chat box!")
-    st.markdown('</div>', unsafe_allow_html=True)
+# Grid Layout for Buttons (2 Rows of 5)
+row1 = st.columns(5)
+row2 = st.columns(5)
+
+prompt_selected = None
+
+# Create buttons
+idx = 0
+for label, query in mh_prompts.items():
+    # Place first 5 in row1, next 5 in row2
+    target_row = row1 if idx < 5 else row2
+    if target_row[idx % 5].button(label):
+        prompt_selected = query
+    idx += 1
+
+# 6. HANDLE SUBMISSION
+final_query = None
+
+if submit_btn and user_input:
+    final_query = user_input
+elif prompt_selected:
+    final_query = prompt_selected
+
+if final_query:
+    if not api_key:
+        st.error("⚠️ Please enter API Key in sidebar")
+    else:
+        # 1. Add User Query to History
+        st.session_state.history.append({"role": "user", "content": final_query})
+        
+        # 2. Get AI Response
+        with st.spinner("👩‍🌾 AgroNova is thinking..."):
+            try:
+                model = genai.GenerativeModel('gemini-2.5-flash')
+                full_prompt = f"""
+                Act as an expert agronomist for Maharashtra, India.
+                Language: {language}.
+                Question: {final_query}
+                
+                Keep answers:
+                - Practical and actionable for farmers.
+                - Localized (mention Indian fertilizers/medicines if needed).
+                - Brief (bullet points).
+                """
+                response = model.generate_content(full_prompt)
+                ai_text = response.text
+                
+                # 3. Add AI Response to History
+                st.session_state.history.append({"role": "assistant", "content": ai_text})
+                
+                # 4. Rerun to update the chat history above instantly
+                st.rerun()
+                
+            except Exception as e:
+                st.error(f"Error: {str(e)}")

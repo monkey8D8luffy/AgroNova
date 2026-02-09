@@ -2,6 +2,7 @@ import streamlit as st
 import google.generativeai as genai
 import os
 from dotenv import load_dotenv
+import time
 
 # Load environment variables
 load_dotenv()
@@ -11,126 +12,210 @@ st.set_page_config(
     page_title="AgroNova | Smart Farming AI",
     page_icon="🌱",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
-# --- CUSTOM MODERN CSS STYLING ---
+# --- PROFESSIONAL UI & ANIMATION CSS ---
 st.markdown("""
 <style>
-    .main { background-color: #f8fcf8; }
-    h1, h2, h3 { font-family: 'Sans-serif'; color: #2e7d32; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-    .stChatMessage { animation: fadeIn 0.5s ease-out; border-radius: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-    .feature-card { background-color: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; transition: transform 0.2s; }
-    .feature-card:hover { transform: translateY(-5px); box-shadow: 0 8px 12px rgba(0,0,0,0.15); }
-    .stButton>button { border-radius: 20px; border: 1px solid #4CAF50; color: #4CAF50; background-color: transparent; transition: all 0.3s; }
-    .stButton>button:hover { background-color: #4CAF50; color: white; }
-    [data-testid="stSidebar"] { background-color: #1b5e20; }
-    [data-testid="stSidebar"] * { color: white !important; }
+    /* 1. FORCE LIGHT THEME & BACKGROUND */
+    .stApp {
+        background-color: #F4F8F4; /* Soft Mint Cream */
+        color: #1E1E1E;
+    }
+    
+    /* 2. TYPOGRAPHY */
+    h1, h2, h3 {
+        color: #1B5E20 !important; /* Forest Green */
+        font-family: 'Helvetica Neue', sans-serif;
+        font-weight: 700;
+    }
+    p, div, label {
+        color: #333333 !important; /* Dark Grey for readability */
+    }
+
+    /* 3. CUSTOM CARDS (White with Shadow) */
+    .feature-card {
+        background-color: #FFFFFF;
+        padding: 25px;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        border: 1px solid #E0E0E0;
+        text-align: center;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .feature-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(46, 125, 50, 0.15);
+        border-color: #66BB6A;
+    }
+
+    /* 4. CHAT BUBBLES */
+    .stChatMessage {
+        background-color: #FFFFFF;
+        border-radius: 15px;
+        border: 1px solid #E0E0E0;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+    }
+    /* User Message Difference */
+    .stChatMessage[data-testid="stChatMessage"]:nth-child(odd) {
+        background-color: #E8F5E9; /* Light Green Tint */
+    }
+
+    /* 5. SIDEBAR STYLING */
+    [data-testid="stSidebar"] {
+        background-color: #1B5E20;
+    }
+    
+    /* 6. BUTTON STYLING (Pill Shape) */
+    .stButton>button {
+        border-radius: 50px;
+        border: 1px solid #1B5E20;
+        color: #1B5E20;
+        background-color: white;
+        font-weight: 600;
+        padding: 0.5rem 1rem;
+        transition: all 0.2s;
+    }
+    .stButton>button:hover {
+        background-color: #1B5E20;
+        color: white;
+        border-color: #1B5E20;
+        transform: scale(1.02);
+    }
+
+    /* 7. CUSTOM LOADING ANIMATION (The Sprout) */
+    .loader {
+        width: 48px;
+        height: 48px;
+        display: block;
+        margin: 20px auto;
+        position: relative;
+        border: 3px solid #1B5E20;
+        border-radius: 50%;
+        box-sizing: border-box;
+        animation: animloader 2s linear infinite;
+    }
+    .loader::after {
+        content: '';  
+        box-sizing: border-box;
+        width: 6px;
+        height: 24px;
+        background: #1B5E20;
+        transform: rotate(-45deg);
+        position: absolute;
+        bottom: -20px;
+        left: 46px;
+    }
+    @keyframes animloader {
+        0% { transform: translate(-10px, -10px); }
+        25% { transform: translate(-10px, 10px); }
+        50% { transform: translate(10px, 10px); }
+        75% { transform: translate(10px, -10px); }
+        100% { transform: translate(-10px, -10px); }
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# --- SIDEBAR CONFIGURATION ---
+# --- SIDEBAR ---
 with st.sidebar:
-    st.title("🌾 AgroNova")
-    st.markdown("### *Empowering Farmers Globally*")
-    st.markdown("---")
+    st.markdown("## 🌿 AgroNova")
     
-    # API Key Logic
+    # API Key Handling
     api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
-        api_key = st.text_input("Enter Gemini API Key", type="password")
+        api_key = st.text_input("🔑 API Key", type="password")
     
     if api_key:
         try:
             genai.configure(api_key=api_key)
-            st.success("API Key Loaded! ✅")
-        except Exception as e:
-            st.error("Invalid API Key")
-    else:
-        st.warning("⚠️ Enter API Key to start")
-    
-    st.markdown("### 🌍 Settings")
-    language = st.selectbox("Select Language / भाषा / idioma", 
-                            ["English", "Hindi (हिंदी)", "Spanish (Español)", "French (Français)", "Swahili", "Punjabi"])
-    
+            st.success("System Online")
+        except:
+            st.error("Invalid Key")
+            
     st.markdown("---")
-    st.info("✅ SDG 2: Zero Hunger")
-    st.info("✅ SDG 13: Climate Action")
+    st.markdown("### ⚙️ Preferences")
+    language = st.selectbox("Language / भाषा", ["English", "Marathi (मराठी)", "Hindi (हिंदी)", "Gujarati (ગુજરાતી)"])
+    st.info("📍 Region: Maharashtra, India")
 
-# --- GEMINI MODEL FUNCTION ---
-def get_gemini_response(prompt, lang_pref):
-    if not api_key:
-        return "⚠️ Please enter your API Key."
-    
+# --- MODEL FUNCTION ---
+def get_ai_response(prompt, lang):
     try:
-        # UPDATED: Using the model that worked in your diagnostic test
         model = genai.GenerativeModel('gemini-2.5-flash')
-        
         full_prompt = f"""
-        You are AgroNova, an expert agricultural AI assistant designed to support farmers globally. 
+        Act as an expert agronomist for Maharashtra, India.
+        User Language: {lang}
+        Question: {prompt}
         
-        **Context:**
-        - User Language: {lang_pref}
-        - User Query: {prompt}
-        
-        **Instructions:**
-        1. Answer strictly in {lang_pref}.
-        2. Be practical, simple, and friendly (farmer-friendly tone).
-        3. Prioritize organic and sustainable solutions (SDG 2 & 13).
+        Guidelines:
+        1. Keep answers short, practical, and bulleted.
+        2. Focus on local crops (Sugarcane, Cotton, Mango, Onion, Rice).
+        3. Mention specific fertilizers/pesticides available in India.
         """
         response = model.generate_content(full_prompt)
         return response.text
     except Exception as e:
-        return f"Error: {str(e)}"
+        return "⚠️ Service busy. Please try again."
 
-# --- MAIN UI ---
-st.markdown("<h1 style='text-align: center; color: #2e7d32;'>🌱 AgroNova Smart Assistant</h1>", unsafe_allow_html=True)
-st.markdown(f"<p style='text-align: center; color: #555;'>Sustainable Farming Solutions • {language}</p>", unsafe_allow_html=True)
+# --- HERO SECTION ---
+col_logo, col_title = st.columns([1, 4])
+with col_logo:
+    st.markdown("# 🌱")
+with col_title:
+    st.markdown("# AgroNova AI")
+    st.markdown("### *Your Expert Farming Companion for Maharashtra*")
 
-# Feature Cards
-col1, col2, col3 = st.columns(3)
-with col1: st.markdown('<div class="feature-card">🌿<br><b>Crop Doctor</b><br>Identify diseases</div>', unsafe_allow_html=True)
-with col2: st.markdown('<div class="feature-card">🌦️<br><b>Climate Smart</b><br>Weather adaptation</div>', unsafe_allow_html=True)
-with col3: st.markdown('<div class="feature-card">🐛<br><b>Pest Control</b><br>Organic solutions</div>', unsafe_allow_html=True)
-
-st.write("") 
-
-# Chat History
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
-
-# Quick Buttons
-st.markdown("### Quick Questions / जल्दी पूछें:")
-qp_cols = st.columns(4)
-prompts = ["Best organic pesticide for tomatoes?", "How to save water in rice farming?", "Suggest crops for sandy soil.", "Signs of nitrogen deficiency?"]
-
-if qp_cols[0].button("🍅 Organic Pesticides"): st.session_state.prompt_input = prompts[0]
-if qp_cols[1].button("💧 Water Saving"): st.session_state.prompt_input = prompts[1]
-if qp_cols[2].button("🏖️ Sandy Soil Crops"): st.session_state.prompt_input = prompts[2]
-if qp_cols[3].button("🍂 Plant Health"): st.session_state.prompt_input = prompts[3]
-
-# Input Handling
-user_input = st.chat_input("Ask AgroNova anything about farming...", key="main_input")
-if "prompt_input" in st.session_state and st.session_state.prompt_input:
-    user_input = st.session_state.prompt_input
-    st.session_state.prompt_input = None
-
-if user_input:
-    st.session_state.messages.append({"role": "user", "content": user_input})
-    with st.chat_message("user"):
-        st.markdown(user_input)
-
-    with st.chat_message("assistant"):
-        with st.spinner("Analyzing agricultural data..."):
-            response = get_gemini_response(user_input, language)
-            st.markdown(response)
-    
-    st.session_state.messages.append({"role": "assistant", "content": response})
+# --- FEATURE CARDS ---
+c1, c2, c3 = st.columns(3)
+with c1: st.markdown('<div class="feature-card">🔬 <b>Crop Doctor</b><br><small>Identify diseases instantly</small></div>', unsafe_allow_html=True)
+with c2: st.markdown('<div class="feature-card">🌦️ <b>Weather</b><br><small>Local forecast & alerts</small></div>', unsafe_allow_html=True)
+with c3: st.markdown('<div class="feature-card">💰 <b>Market Rates</b><br><small>Latest APMC prices</small></div>', unsafe_allow_html=True)
 
 st.markdown("---")
-st.markdown("<div style='text-align: center; color: #888; font-size: 12px;'>AgroNova © 2025</div>", unsafe_allow_html=True)
+
+# --- MAHARASHTRA PROMPTS ---
+st.subheader("🔍 What would you like to know?")
+st.markdown("Try one of these searches:")
+
+# Custom Grid for Prompts
+p_col1, p_col2, p_col3, p_col4 = st.columns(4)
+
+prompt_map = {
+    "🥭 Alphonso Care": "Give me a care schedule for Alphonso Mango flowering stage.",
+    "🌾 Sugarcane Yield": "Best fertilizers to increase Sugarcane tonnage in Maharashtra.",
+    "🦠 Cotton Pests": "Organic control for Pink Bollworm in Cotton.",
+    "🧅 Onion Storage": "How to prevent rotting in stored onions during monsoon?"
+}
+
+selected_prompt = None
+
+if p_col1.button("🥭 Alphonso Care"): selected_prompt = prompt_map["🥭 Alphonso Care"]
+if p_col2.button("🌾 Sugarcane Yield"): selected_prompt = prompt_map["🌾 Sugarcane Yield"]
+if p_col3.button("🦠 Cotton Pests"): selected_prompt = prompt_map["🦠 Cotton Pests"]
+if p_col4.button("🧅 Onion Storage"): selected_prompt = prompt_map["🧅 Onion Storage"]
+
+# --- CHAT UI ---
+if "history" not in st.session_state:
+    st.session_state.history = []
+
+# Display History
+for msg in st.session_state.history:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
+
+# Handle Input
+user_input = st.chat_input("Ask about crops, fertilizers, or diseases...", key="main_input")
+
+# Logic: If button clicked OR text typed
+final_query = selected_prompt if selected_prompt else user_input
+
+if final_query:
+    # Show user message
+    with st.chat_message("user"):
+        st.markdown(final_query)
+    st.session_state.history.append({"role": "user", "content": final_query})
+
+    # Show custom loading animation
+    with st.chat_message("assistant"):
+        placeholder = st.empty()
+        placeholder.markdown('<div class="loader"></div>', unsafe_allow_

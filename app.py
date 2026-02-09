@@ -1,6 +1,10 @@
 import streamlit as st
 import google.generativeai as genai
 import os
+from dotenv import load_dotenv  # Import this to read .env
+
+# Load environment variables
+load_dotenv()
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
@@ -10,68 +14,30 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- CUSTOM MODERN CSS STYLING ---
-st.markdown("""
-<style>
-    /* Global Styles */
-    .main {
-        background-color: #f8fcf8; /* Very light green tint */
-    }
-    
-    /* Typography */
-    h1, h2, h3 {
-        font-family: 'Sans-serif';
-        color: #2e7d32;
-    }
-    
-    /* Smooth Transitions & Animations */
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-    
-    .stChatMessage {
-        animation: fadeIn 0.5s ease-out;
-        border-radius: 15px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-    }
+# ... [Keep your CSS Styles here unchanged] ...
 
-    /* Custom Cards for Features */
-    .feature-card {
-        background-color: white;
-        padding: 20px;
-        border-radius: 15px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        text-align: center;
-        transition: transform 0.2s;
-    }
-    .feature-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 12px rgba(0,0,0,0.15);
-    }
+# --- SIDEBAR CONFIGURATION ---
+with st.sidebar:
+    st.title("🌾 AgroNova")
+    st.markdown("### *Empowering Farmers Globally*")
+    st.markdown("---")
     
-    /* Button Styling */
-    .stButton>button {
-        border-radius: 20px;
-        border: 1px solid #4CAF50;
-        color: #4CAF50;
-        background-color: transparent;
-        transition: all 0.3s;
-    }
-    .stButton>button:hover {
-        background-color: #4CAF50;
-        color: white;
-    }
+    # NEW: Logic to check for .env key first
+    api_key = os.getenv("GOOGLE_API_KEY")
+
+    # If no key in .env, ask for it in the sidebar
+    if not api_key:
+        api_key = st.text_input("Enter Gemini API Key", type="password", help="Get your key from Google AI Studio")
     
-    /* Sidebar Styling */
-    [data-testid="stSidebar"] {
-        background-color: #1b5e20;
-    }
-    [data-testid="stSidebar"] * {
-        color: white !important;
-    }
-</style>
-""", unsafe_allow_html=True)
+    # Configure the model
+    if api_key:
+        genai.configure(api_key=api_key)
+        st.success("API Key Loaded! ✅")
+    else:
+        st.warning("⚠️ Please enter an API Key to continue")
+    
+    st.markdown("### 🌍 Settings")
+    # ... [Rest of your sidebar code] ...
 
 # --- SIDEBAR CONFIGURATION ---
 with st.sidebar:

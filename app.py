@@ -118,11 +118,16 @@ st.markdown("""
         padding-bottom: 2rem;
     }
     
-    /* Profile Photo Style */
-    .profile-img {
+    /* 6. PROFILE PHOTO STYLING (The Fix) */
+    /* This targets ANY image inside the sidebar and makes it round */
+    [data-testid="stSidebar"] img {
         border-radius: 50%;
         border: 3px solid #4CAF50;
         box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        object-fit: cover;
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -143,16 +148,21 @@ def get_soil_moisture(water_cond):
 with st.sidebar:
     st.markdown("## 👤 Farmer Profile")
     
-    # 1. Profile Photo
+    # 1. Profile Photo (Fixed: Removed invalid 'className')
     uploaded_file = st.file_uploader("Upload Photo", type=["jpg", "png", "jpeg"], label_visibility="collapsed")
     if uploaded_file is not None:
         image = Image.open(uploaded_file)
-        st.image(image, width=120, output_format='PNG', use_column_width=False, clamp=True, channels='RGB', caption=None, className="profile-img")
+        # ERROR FIXED HERE:
+        st.image(image, width=120)
     else:
-        st.image("https://cdn-icons-png.flaticon.com/512/3135/3135715.png", width=120, className="profile-img")
+        # ERROR FIXED HERE:
+        st.image("https://cdn-icons-png.flaticon.com/512/3135/3135715.png", width=120)
         
     # 2. Name
-    farmer_name = st.text_input("Name", value=st.session_state.get("name", "Rajesh Kumar"))
+    if "name" not in st.session_state:
+        st.session_state["name"] = "Rajesh Kumar"
+    
+    farmer_name = st.text_input("Name", value=st.session_state["name"])
     st.session_state["name"] = farmer_name
     
     st.markdown("---")
@@ -313,9 +323,9 @@ with col_right:
     # Quick Prompts Card
     st.markdown('<div class="dashboard-card"><div class="card-title">💡 Quick Ideas</div>', unsafe_allow_html=True)
     if st.button(f"Pest control for {loc_data['crops'][0]}?"):
-        # You can add logic to auto-submit this to chat
-        pass
+        # Logic to submit this query could go here, for now it's visual
+        st.info("Ask this in the chat box!")
     st.write("")
     if st.button(f"Fertilizer plan for {water_cond} soil?"):
-        pass
+        st.info("Ask this in the chat box!")
     st.markdown('</div>', unsafe_allow_html=True)

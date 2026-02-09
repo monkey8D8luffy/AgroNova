@@ -120,35 +120,51 @@ with st.sidebar:
 
         except Exception as e:
             st.error("Invalid API Key")
-# --- GEMINI MODEL FUNCTION ---
+# --- ROBUST GEMINI MODEL FUNCTION ---
 def get_gemini_response(prompt, lang_pref):
     if not api_key:
         return "⚠️ Please enter your API Key in the sidebar or .env file to start."
     
-    try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        full_prompt = f"""
-        You are AgroNova, an expert agricultural AI assistant designed to support farmers globally. 
-        Your goals are aligned with UN SDG 2 (Zero Hunger) and SDG 13 (Climate Action).
-        
-        **Your Persona:**
-        - Friendly, empathetic, and practical.
-        - Uses simple, jargon-free language suitable for farmers.
-        - Knowledgeable about organic farming, pest control, crop cycles, and sustainable practices.
-        
-        **Current Context:**
-        - User Language Preference: {lang_pref}
-        - Specific Task: Provide advice on: {prompt}
-        
-        **Instructions:**
-        1. Respond strictly in {lang_pref}.
-        2. Keep the answer structured and actionable.
-        3. If the query is about pests, prioritize organic/natural solutions first.
-        """
-        response = model.generate_content(full_prompt)
-        return response.text
-    except Exception as e:
-        return f"Error: {str(e)}"
+    # List of models to try (Newest -> Oldest)
+    models_to_try = [
+        'gemini-1.5-flash',
+        'gemini-1.5-pro',
+        'gemini-pro',
+        'gemini-1.0-pro'
+    ]
+    
+    last_error = ""
+
+    for model_name in models_to_try:
+        try:
+            # Attempt to create model with current name
+            model = genai.GenerativeModel(model_name)
+            
+            full_prompt = f"""
+            You are AgroNova, an expert agricultural AI assistant designed to support farmers globally. 
+            Your goals are aligned with UN SDG 2 (Zero Hunger) and SDG 13 (Climate Action).
+            
+            **Current Context:**
+            - User Language Preference: {lang_pref}
+            - Specific Task: Provide advice on: {prompt}
+            
+            **Instructions:**
+            1. Respond strictly in {lang_pref}.
+            2. Keep the answer structured and actionable.
+            3. If the query is about pests, prioritize organic/natural solutions first.
+            """
+            
+            # If this line works, we found a valid model!
+            response = model.generate_content(full_prompt)
+            return response.text
+            
+        except Exception as e:
+            # If it fails, save the error and loop to the next model name
+            last_error = str(e)
+            continue
+            
+    # If ALL models fail, return the last error message
+    return f"All models failed. Last error: {last_error}"
 
 # --- MAIN UI LAYOUT ---
 st.markdown("<h1 style='text-align: center; color: #2e7d32;'>🌱 AgroNova Smart Assistant</h1>", unsafe_allow_html=True)

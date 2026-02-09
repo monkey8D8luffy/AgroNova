@@ -138,4 +138,57 @@ with st.form(key='search_form'):
             submit_button = st.form_submit_button(label="Ask AI ➔")
 
 # --- QUICK PROMPT PILLS (Like Figma's bottom buttons) ---
-st.markdown("<br>", unsafe_allow_html=
+# THIS WAS THE BROKEN LINE:
+st.markdown("<br>", unsafe_allow_html=True) 
+
+col1, col2, col3 = st.columns(3)
+
+# Logic to handle Pill Clicks
+clicked_prompt = None
+
+if col1.button("🥭 Alphonso Care"):
+    clicked_prompt = "Give me a care schedule for Alphonso Mango flowering stage."
+if col2.button("🌾 Sugarcane Yield"):
+    clicked_prompt = "Best fertilizers to increase Sugarcane tonnage in Maharashtra."
+if col3.button("🦠 Cotton Pests"):
+    clicked_prompt = "Organic control for Pink Bollworm in Cotton."
+
+# --- GENERATION LOGIC ---
+final_query = None
+if submit_button and user_input:
+    final_query = user_input
+elif clicked_prompt:
+    final_query = clicked_prompt
+
+# --- DISPLAY RESULT ---
+if final_query:
+    if not api_key:
+        st.error("Please enter your API Key in the sidebar first.")
+    else:
+        # Show a clean loading state
+        with st.spinner("Analyzing..."):
+            try:
+                model = genai.GenerativeModel('gemini-2.5-flash')
+                full_prompt = f"""
+                Act as an expert agronomist. Language: {language}.
+                Question: {final_query}
+                Keep it practical, bulleted, and regional to Maharashtra.
+                """
+                response = model.generate_content(full_prompt)
+                
+                # Render the result in a nice card
+                st.markdown(f"""
+                <div class="response-box">
+                    <h3 style="color:#1B5E20; margin-top:0;">🌱 AgroNova Advice</h3>
+                    <div style="color:#333; font-size:16px; line-height:1.6;">
+                        {response.text}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+            except Exception as e:
+                st.error(f"Error: {e}")
+
+# Footer Spacer
+st.markdown("<br><br><br>", unsafe_allow_html=True)
+st.markdown("<div style='text-align:center; color:#999;'>AgroNova • Built for Sustainable Future</div>", unsafe_allow_html=True)

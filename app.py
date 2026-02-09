@@ -18,10 +18,10 @@ st.set_page_config(
 # --- PROFESSIONAL UI & ANIMATION CSS ---
 st.markdown("""
 <style>
-    /* 1. FORCE LIGHT THEME & BACKGROUND */
+    /* 1. FORCE LIGHT THEME & BACKGROUND (Fixed Visibility) */
     .stApp {
-        background-color: #F4F8F4; /* Soft Mint Cream */
-        color: #1E1E1E;
+        background-color: #F4F8F4 !important; /* Soft Mint Cream */
+        color: #1E1E1E !important; /* Dark Grey Text */
     }
     
     /* 2. TYPOGRAPHY */
@@ -30,7 +30,7 @@ st.markdown("""
         font-family: 'Helvetica Neue', sans-serif;
         font-weight: 700;
     }
-    p, div, label {
+    p, div, label, span {
         color: #333333 !important; /* Dark Grey for readability */
     }
 
@@ -49,6 +49,10 @@ st.markdown("""
         box-shadow: 0 10px 20px rgba(46, 125, 50, 0.15);
         border-color: #66BB6A;
     }
+    .feature-card h4 {
+        color: #1B5E20 !important;
+        margin-bottom: 5px;
+    }
 
     /* 4. CHAT BUBBLES */
     .stChatMessage {
@@ -66,12 +70,15 @@ st.markdown("""
     [data-testid="stSidebar"] {
         background-color: #1B5E20;
     }
+    [data-testid="stSidebar"] p, [data-testid="stSidebar"] span, [data-testid="stSidebar"] label {
+        color: #FFFFFF !important; /* Force White text in sidebar */
+    }
     
     /* 6. BUTTON STYLING (Pill Shape) */
     .stButton>button {
         border-radius: 50px;
         border: 1px solid #1B5E20;
-        color: #1B5E20;
+        color: #1B5E20 !important;
         background-color: white;
         font-weight: 600;
         padding: 0.5rem 1rem;
@@ -79,7 +86,7 @@ st.markdown("""
     }
     .stButton>button:hover {
         background-color: #1B5E20;
-        color: white;
+        color: white !important;
         border-color: #1B5E20;
         transform: scale(1.02);
     }
@@ -151,6 +158,7 @@ def get_ai_response(prompt, lang):
         1. Keep answers short, practical, and bulleted.
         2. Focus on local crops (Sugarcane, Cotton, Mango, Onion, Rice).
         3. Mention specific fertilizers/pesticides available in India.
+        4. If asking about weather, give general advice for the current season in India.
         """
         response = model.generate_content(full_prompt)
         return response.text
@@ -167,9 +175,9 @@ with col_title:
 
 # --- FEATURE CARDS ---
 c1, c2, c3 = st.columns(3)
-with c1: st.markdown('<div class="feature-card">🔬 <b>Crop Doctor</b><br><small>Identify diseases instantly</small></div>', unsafe_allow_html=True)
-with c2: st.markdown('<div class="feature-card">🌦️ <b>Weather</b><br><small>Local forecast & alerts</small></div>', unsafe_allow_html=True)
-with c3: st.markdown('<div class="feature-card">💰 <b>Market Rates</b><br><small>Latest APMC prices</small></div>', unsafe_allow_html=True)
+with c1: st.markdown('<div class="feature-card"><h4>🔬 Crop Doctor</h4>Identify diseases instantly</div>', unsafe_allow_html=True)
+with c2: st.markdown('<div class="feature-card"><h4>🌦️ Weather</h4>Local forecast & alerts</div>', unsafe_allow_html=True)
+with c3: st.markdown('<div class="feature-card"><h4>💰 Market Rates</h4>Latest APMC prices</div>', unsafe_allow_html=True)
 
 st.markdown("---")
 
@@ -218,4 +226,17 @@ if final_query:
     # Show custom loading animation
     with st.chat_message("assistant"):
         placeholder = st.empty()
-        placeholder.markdown('<div class="loader"></div>', unsafe_allow_
+        # THIS IS THE LINE THAT WAS BROKEN BEFORE:
+        placeholder.markdown('<div class="loader"></div>', unsafe_allow_html=True)
+        
+        # Get response
+        response = get_ai_response(final_query, language)
+        
+        # Clear loader and show text
+        placeholder.markdown(response)
+    
+    st.session_state.history.append({"role": "assistant", "content": response})
+
+# Footer
+st.markdown("---")
+st.markdown("<center style='color:#888;'>Built with ❤️ for Indian Farmers</center>", unsafe_allow_html=True)

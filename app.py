@@ -2,241 +2,140 @@ import streamlit as st
 import google.generativeai as genai
 import os
 from dotenv import load_dotenv
-import time
 
 # Load environment variables
 load_dotenv()
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
-    page_title="AgroNova | Smart Farming AI",
+    page_title="AgroNova | AI Farming",
     page_icon="🌱",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# --- PROFESSIONAL UI & ANIMATION CSS ---
+# --- FIGMA-STYLE MINIMALIST CSS ---
 st.markdown("""
 <style>
-    /* 1. FORCE LIGHT THEME & BACKGROUND (Fixed Visibility) */
+    /* 1. GLOBAL RESET & WHITE THEME */
     .stApp {
-        background-color: #F4F8F4 !important; /* Soft Mint Cream */
-        color: #1E1E1E !important; /* Dark Grey Text */
+        background-color: #FFFFFF !important;
+        color: #111111 !important;
     }
     
-    /* 2. TYPOGRAPHY */
-    h1, h2, h3 {
-        color: #1B5E20 !important; /* Forest Green */
-        font-family: 'Helvetica Neue', sans-serif;
+    /* 2. REMOVE STREAMLIT DEFAULT PADDING to center things */
+    .block-container {
+        padding-top: 5rem !important;
+        padding-bottom: 5rem !important;
+        max_width: 900px !important;
+    }
+
+    /* 3. HERO TYPOGRAPHY (Like the Figma Headline) */
+    .hero-title {
+        font-family: 'Inter', sans-serif;
+        font-size: 64px !important;
         font-weight: 700;
-    }
-    p, div, label, span {
-        color: #333333 !important; /* Dark Grey for readability */
-    }
-
-    /* 3. CUSTOM CARDS (White with Shadow) */
-    .feature-card {
-        background-color: #FFFFFF;
-        padding: 25px;
-        border-radius: 12px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-        border: 1px solid #E0E0E0;
         text-align: center;
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        background: -webkit-linear-gradient(45deg, #1B5E20, #4CAF50);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 10px;
+        line-height: 1.1;
     }
-    .feature-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 20px rgba(46, 125, 50, 0.15);
-        border-color: #66BB6A;
-    }
-    .feature-card h4 {
-        color: #1B5E20 !important;
-        margin-bottom: 5px;
+    .hero-subtitle {
+        font-family: 'Inter', sans-serif;
+        font-size: 20px;
+        color: #666666;
+        text-align: center;
+        margin-bottom: 40px;
+        font-weight: 400;
     }
 
-    /* 4. CHAT BUBBLES */
-    .stChatMessage {
+    /* 4. CENTERED INPUT BOX STYLING */
+    /* This hacks the default streamlit text area to look like a centerpiece */
+    .stTextArea textarea {
+        background-color: #F8F9FA !important;
+        border: 1px solid #E0E0E0 !important;
+        border-radius: 20px !important;
+        font-size: 18px;
+        padding: 20px !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important;
+        transition: box-shadow 0.3s ease;
+        height: 150px !important; /* Make it tall like the Figma box */
+    }
+    .stTextArea textarea:focus {
+        box-shadow: 0 8px 24px rgba(0,0,0,0.1) !important;
+        border-color: #1B5E20 !important;
+    }
+
+    /* 5. PILL BUTTONS (The quick prompts below input) */
+    div.stButton > button {
         background-color: #FFFFFF;
-        border-radius: 15px;
+        color: #333333;
         border: 1px solid #E0E0E0;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+        border-radius: 30px;
+        padding: 10px 24px;
+        font-size: 14px;
+        font-weight: 500;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        transition: all 0.2s ease-in-out;
     }
-    /* User Message Difference */
-    .stChatMessage[data-testid="stChatMessage"]:nth-child(odd) {
-        background-color: #E8F5E9; /* Light Green Tint */
-    }
-
-    /* 5. SIDEBAR STYLING */
-    [data-testid="stSidebar"] {
-        background-color: #1B5E20;
-    }
-    [data-testid="stSidebar"] p, [data-testid="stSidebar"] span, [data-testid="stSidebar"] label {
-        color: #FFFFFF !important; /* Force White text in sidebar */
+    div.stButton > button:hover {
+        background-color: #F1F8E9;
+        border-color: #1B5E20;
+        color: #1B5E20;
+        transform: translateY(-2px);
     }
     
-    /* 6. BUTTON STYLING (Pill Shape) */
-    .stButton>button {
-        border-radius: 50px;
-        border: 1px solid #1B5E20;
-        color: #1B5E20 !important;
-        background-color: white;
-        font-weight: 600;
-        padding: 0.5rem 1rem;
-        transition: all 0.2s;
-    }
-    .stButton>button:hover {
-        background-color: #1B5E20;
-        color: white !important;
-        border-color: #1B5E20;
-        transform: scale(1.02);
+    /* 6. RESPONSE CARD STYLE */
+    .response-box {
+        background-color: #F1F8E9;
+        border-radius: 16px;
+        padding: 30px;
+        margin-top: 30px;
+        border: 1px solid #C8E6C9;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.03);
     }
 
-    /* 7. CUSTOM LOADING ANIMATION (The Sprout) */
-    .loader {
-        width: 48px;
-        height: 48px;
-        display: block;
-        margin: 20px auto;
-        position: relative;
-        border: 3px solid #1B5E20;
-        border-radius: 50%;
-        box-sizing: border-box;
-        animation: animloader 2s linear infinite;
-    }
-    .loader::after {
-        content: '';  
-        box-sizing: border-box;
-        width: 6px;
-        height: 24px;
-        background: #1B5E20;
-        transform: rotate(-45deg);
-        position: absolute;
-        bottom: -20px;
-        left: 46px;
-    }
-    @keyframes animloader {
-        0% { transform: translate(-10px, -10px); }
-        25% { transform: translate(-10px, 10px); }
-        50% { transform: translate(10px, 10px); }
-        75% { transform: translate(10px, -10px); }
-        100% { transform: translate(-10px, -10px); }
-    }
+    /* Hide default elements */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
-# --- SIDEBAR ---
+# --- SIDEBAR (Hidden by default, for settings) ---
 with st.sidebar:
-    st.markdown("## 🌿 AgroNova")
-    
-    # API Key Handling
+    st.markdown("### ⚙️ Settings")
     api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
-        api_key = st.text_input("🔑 API Key", type="password")
+        api_key = st.text_input("🔑 Enter API Key", type="password")
     
     if api_key:
-        try:
-            genai.configure(api_key=api_key)
-            st.success("System Online")
-        except:
-            st.error("Invalid Key")
-            
-    st.markdown("---")
-    st.markdown("### ⚙️ Preferences")
-    language = st.selectbox("Language / भाषा", ["English", "Marathi (मराठी)", "Hindi (हिंदी)", "Gujarati (ગુજરાતી)"])
-    st.info("📍 Region: Maharashtra, India")
-
-# --- MODEL FUNCTION ---
-def get_ai_response(prompt, lang):
-    try:
-        model = genai.GenerativeModel('gemini-2.5-flash')
-        full_prompt = f"""
-        Act as an expert agronomist for Maharashtra, India.
-        User Language: {lang}
-        Question: {prompt}
-        
-        Guidelines:
-        1. Keep answers short, practical, and bulleted.
-        2. Focus on local crops (Sugarcane, Cotton, Mango, Onion, Rice).
-        3. Mention specific fertilizers/pesticides available in India.
-        4. If asking about weather, give general advice for the current season in India.
-        """
-        response = model.generate_content(full_prompt)
-        return response.text
-    except Exception as e:
-        return "⚠️ Service busy. Please try again."
-
-# --- HERO SECTION ---
-col_logo, col_title = st.columns([1, 4])
-with col_logo:
-    st.markdown("# 🌱")
-with col_title:
-    st.markdown("# AgroNova AI")
-    st.markdown("### *Your Expert Farming Companion for Maharashtra*")
-
-# --- FEATURE CARDS ---
-c1, c2, c3 = st.columns(3)
-with c1: st.markdown('<div class="feature-card"><h4>🔬 Crop Doctor</h4>Identify diseases instantly</div>', unsafe_allow_html=True)
-with c2: st.markdown('<div class="feature-card"><h4>🌦️ Weather</h4>Local forecast & alerts</div>', unsafe_allow_html=True)
-with c3: st.markdown('<div class="feature-card"><h4>💰 Market Rates</h4>Latest APMC prices</div>', unsafe_allow_html=True)
-
-st.markdown("---")
-
-# --- MAHARASHTRA PROMPTS ---
-st.subheader("🔍 What would you like to know?")
-st.markdown("Try one of these searches:")
-
-# Custom Grid for Prompts
-p_col1, p_col2, p_col3, p_col4 = st.columns(4)
-
-prompt_map = {
-    "🥭 Alphonso Care": "Give me a care schedule for Alphonso Mango flowering stage.",
-    "🌾 Sugarcane Yield": "Best fertilizers to increase Sugarcane tonnage in Maharashtra.",
-    "🦠 Cotton Pests": "Organic control for Pink Bollworm in Cotton.",
-    "🧅 Onion Storage": "How to prevent rotting in stored onions during monsoon?"
-}
-
-selected_prompt = None
-
-if p_col1.button("🥭 Alphonso Care"): selected_prompt = prompt_map["🥭 Alphonso Care"]
-if p_col2.button("🌾 Sugarcane Yield"): selected_prompt = prompt_map["🌾 Sugarcane Yield"]
-if p_col3.button("🦠 Cotton Pests"): selected_prompt = prompt_map["🦠 Cotton Pests"]
-if p_col4.button("🧅 Onion Storage"): selected_prompt = prompt_map["🧅 Onion Storage"]
-
-# --- CHAT UI ---
-if "history" not in st.session_state:
-    st.session_state.history = []
-
-# Display History
-for msg in st.session_state.history:
-    with st.chat_message(msg["role"]):
-        st.markdown(msg["content"])
-
-# Handle Input
-user_input = st.chat_input("Ask about crops, fertilizers, or diseases...", key="main_input")
-
-# Logic: If button clicked OR text typed
-final_query = selected_prompt if selected_prompt else user_input
-
-if final_query:
-    # Show user message
-    with st.chat_message("user"):
-        st.markdown(final_query)
-    st.session_state.history.append({"role": "user", "content": final_query})
-
-    # Show custom loading animation
-    with st.chat_message("assistant"):
-        placeholder = st.empty()
-        # THIS IS THE LINE THAT WAS BROKEN BEFORE:
-        placeholder.markdown('<div class="loader"></div>', unsafe_allow_html=True)
-        
-        # Get response
-        response = get_ai_response(final_query, language)
-        
-        # Clear loader and show text
-        placeholder.markdown(response)
+        genai.configure(api_key=api_key)
     
-    st.session_state.history.append({"role": "assistant", "content": response})
+    language = st.selectbox("Language", ["English", "Hindi", "Marathi", "Spanish"])
 
-# Footer
-st.markdown("---")
-st.markdown("<center style='color:#888;'>Built with ❤️ for Indian Farmers</center>", unsafe_allow_html=True)
+# --- MAIN HERO SECTION ---
+# 1. Big Headline
+st.markdown('<div class="hero-title">Your AI Farming Tool,<br>Now in AgroNova</div>', unsafe_allow_html=True)
+st.markdown('<div class="hero-subtitle">Ask about crops, pests, or weather in Maharashtra</div>', unsafe_allow_html=True)
+
+# --- CENTERED INPUT LOGIC ---
+# We use a form so the user can type and hit "Ctrl+Enter" or click a button
+with st.form(key='search_form'):
+    col_center = st.columns([1, 10, 1])[1] # Center align hack
+    with col_center:
+        user_input = st.text_area(
+            label="Input", 
+            label_visibility="collapsed",
+            placeholder="Describe your farming issue here... (e.g., 'White spots on tomato leaves')",
+        )
+        
+        # Action Row inside the form (Submit button on right)
+        c1, c2, c3 = st.columns([6, 1, 1])
+        with c3:
+            submit_button = st.form_submit_button(label="Ask AI ➔")
+
+# --- QUICK PROMPT PILLS (Like Figma's bottom buttons) ---
+st.markdown("<br>", unsafe_allow_html=

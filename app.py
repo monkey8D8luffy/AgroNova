@@ -40,7 +40,7 @@ def init_session_state():
 
 init_session_state()
 
-# --- HELPER: TRANSLATIONS (Simplified Mockup) ---
+# --- HELPER: TRANSLATIONS ---
 translations = {
     'English': {'home': 'Home', 'profile': 'Profile', 'setting': 'Setting', 'search_placeholder': 'Ask anything about farming...', 'personalized_prompts': 'Personalized Prompts for your Area', 'weather': 'Weather', 'tips': 'Farming Tips', 'harvest': 'Harvest Countdown', 'seeds': 'Recommended High-Yield Seeds', 'save': 'Save Settings', 'dark_mode': 'Dark Mode', 'history': 'History', 'news': 'Local Ag News', 'send': 'Send'},
     'Hindi': {'home': 'होम', 'profile': 'प्रोफाइल', 'setting': 'सेटिंग', 'search_placeholder': 'खेती के बारे में कुछ भी पूछें...', 'personalized_prompts': 'आपके क्षेत्र के लिए व्यक्तिगत सुझाव', 'weather': 'मौसम', 'tips': 'खेती के टिप्स', 'harvest': 'फसल की उल्टी गिनती', 'seeds': 'अनुशंसित उच्च उपज वाले बीज', 'save': 'सेटिंग्स सहेजें', 'dark_mode': 'डार्क मोड', 'history': 'इतिहास', 'news': 'स्थानीय कृषि समाचार', 'send': 'भेजें'},
@@ -49,8 +49,8 @@ def t(key):
     lang = st.session_state.settings.get('language', 'English')
     return translations.get(lang, translations['English']).get(key, key)
 
-# --- HELPER: CSS & ASSETS (REMOVED IMAGE LOGIC, ADDED GREEN THEMES) ---
-# Light Theme: Light green background, dark green text
+# --- HELPER: CSS THEMES ---
+# Light Theme
 light_theme_css = """
     --main-bg-color: #e8f5e9; 
     --text-color: #0f3d0f;    
@@ -59,8 +59,7 @@ light_theme_css = """
     --input-bg: rgba(255, 255, 255, 0.9);
     --nav-active-bg: #c8e6c9; 
 """
-
-# Dark Theme: Dark green background, light green text
+# Dark Theme
 dark_theme_css = """
     --main-bg-color: #0b2e0b; 
     --text-color: #e8f5e9;    
@@ -79,19 +78,25 @@ st.markdown(f"""
     }}
     .stApp {{
         background-color: var(--main-bg-color);
-        background-image: none; /* Ensure no image tries to load */
     }}
-    /*Glassmorphism Containers*/
+    
+    /* Apply our theme to native Streamlit containers (Fixes the News/History box issue!) */
+    [data-testid="stVerticalBlockBorderWrapper"] {{
+        background: var(--glass-bg) !important;
+        border-radius: 20px !important;
+        border: 1px solid var(--border-color) !important;
+    }}
+
+    /*Glassmorphism Containers for standard divs*/
     .glass-container {{
         background: var(--glass-bg);
-        backdrop-filter: blur(15px);
-        -webkit-backdrop-filter: blur(15px);
         border-radius: 20px;
         border: 1px solid var(--border-color);
         padding: 20px;
         margin-bottom: 15px;
         color: var(--text-color);
     }}
+    
     /*Nav Pills*/
     .nav-pills {{
         display: flex;
@@ -101,7 +106,6 @@ st.markdown(f"""
     }}
     .nav-pill-btn {{
         background: var(--glass-bg);
-        backdrop-filter: blur(10px);
         border: 1px solid var(--border-color);
         border-radius: 30px;
         padding: 8px 25px;
@@ -127,13 +131,11 @@ st.markdown(f"""
 
     /*Headings*/
     h1, h2, h3, h4, p, label, .stMarkdown p {{ color: var(--text-color) !important; }}
-
-    /*Hide default Elements*/
     #MainMenu, footer, header {{visibility: hidden;}}
 </style>
 """, unsafe_allow_html=True)
 
-# --- HELPER: API INTEGRATIONS (MOCK & REAL) ---
+# --- HELPER: API INTEGRATIONS ---
 def configure_gemini():
     key = st.session_state.settings.get('gemini_key')
     if key: genai.configure(api_key=key)
@@ -144,7 +146,6 @@ def get_gemini_response(prompt, image=None):
     try:
         model_name = 'gemini-2.0-flash'
         model = genai.GenerativeModel(model_name)
-
         settings_context = f"Context: User is a farmer in {st.session_state.settings['state']}, {st.session_state.settings['country']}. Soil: {st.session_state.settings['soil_type']}. Water: {st.session_state.settings['water_condition']}. Respond in {st.session_state.settings['language']}."
         full_prompt = f"{settings_context}\nQuestion: {prompt}"
 
@@ -159,8 +160,7 @@ def get_gemini_response(prompt, image=None):
             try:
                 available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
                 error_msg += f" \nAvailable models: {', '.join(available_models)}"
-            except:
-                 pass
+            except: pass
         return error_msg
 
 def get_personalized_prompts():
@@ -274,20 +274,20 @@ if st.session_state.page == 'Home':
 
         with c_hist:
             if st.session_state.show_history:
-                st.markdown(f"<div class='glass-container' style='height: 70vh; overflow-y: auto;'><h3>{t('history')}</h3>", unsafe_allow_html=True)
+                # FIXED: Moved button outside of native container
                 if st.button("← Close", key="close_hist"):
                     st.session_state.show_history=False
                     st.rerun()
 
-                for i, (user_msg, ai_msg) in enumerate(reversed(st.session_state.chat_history)):
-                    with st.container():
+                with st.container(height=500, border=True):
+                    st.markdown(f"<h3>{t('history')}</h3>", unsafe_allow_html=True)
+                    for i, (user_msg, ai_msg) in enumerate(reversed(st.session_state.chat_history)):
                         st.markdown(f"**Q:** {user_msg[:30]}...")
-                        if st.button("🗑️", key=f"del_{i}", help="Delete Chat"):
+                        if st.button("🗑️ Delete", key=f"del_{i}", help="Delete Chat"):
                             actual_idx = len(st.session_state.chat_history) - 1 - i
                             st.session_state.chat_history.pop(actual_idx)
                             st.rerun()
                         st.markdown("---")
-                st.markdown("</div>", unsafe_allow_html=True)
             else:
                  if st.button("📜 History", key="open_hist", use_container_width=True):
                      st.session_state.show_history = True
@@ -310,17 +310,18 @@ if st.session_state.page == 'Home':
 
         with c_news:
             if st.session_state.show_news:
-                st.markdown(f"<div class='glass-container' style='height: 70vh; overflow-y: auto;'><h3>{t('news')}</h3>", unsafe_allow_html=True)
+                # FIXED: Moved button outside of native container
                 if st.button("Close →", key="close_news"):
                      st.session_state.show_news=False
                      st.rerun()
 
-                news_items = get_agri_news()
-                for item in news_items:
-                    st.markdown(f"**{item['title']}**")
-                    st.markdown(f"*{item['source']}*")
-                    st.markdown("---")
-                st.markdown("</div>", unsafe_allow_html=True)
+                with st.container(height=500, border=True):
+                    st.markdown(f"<h3>{t('news')}</h3>", unsafe_allow_html=True)
+                    news_items = get_agri_news()
+                    for item in news_items:
+                        st.markdown(f"**{item['title']}**")
+                        st.markdown(f"*{item['source']}*")
+                        st.markdown("---")
             else:
                  if st.button("📰 News", key="open_news", use_container_width=True):
                      st.session_state.show_news = True

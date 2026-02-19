@@ -55,11 +55,11 @@ def get_base64_of_bin_file(bin_file):
         data = f.read()
     return base64.b64encode(data).decode()
 
-# FIXED: Exact filename match and changed MIME type to image/jpeg
-image_filename = "green-and-colored-tropical-leaves-on-bright-colorful-background-photo.jpg"
+# FIXED: Updated to use the new 'image_3.png' and changed MIME type to image/png
+image_filename = "image_3.png"
 try:
     img_base64 = get_base64_of_bin_file(image_filename)
-    bg_image_css = f'url("data:image/jpeg;base64,{img_base64}")'
+    bg_image_css = f'url("data:image/png;base64,{img_base64}")'
 except FileNotFoundError:
     st.error(f"Image '{image_filename}' not found. Please ensure it is in the exact same folder as your Python file.")
     bg_image_css = ""

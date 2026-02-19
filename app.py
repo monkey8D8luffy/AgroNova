@@ -49,88 +49,122 @@ def t(key):
     lang = st.session_state.settings.get('language', 'English')
     return translations.get(lang, translations['English']).get(key, key)
 
-# --- HELPER: CSS THEMES ---
-# Light Theme
-light_theme_css = """
-    --main-bg-color: #e8f5e9; 
-    --text-color: #0f3d0f;    
-    --glass-bg: rgba(255, 255, 255, 0.65); 
-    --border-color: rgba(15, 61, 15, 0.2); 
-    --input-bg: rgba(255, 255, 255, 0.9);
-    --nav-active-bg: #c8e6c9; 
-"""
-# Dark Theme
-dark_theme_css = """
-    --main-bg-color: #0b2e0b; 
-    --text-color: #e8f5e9;    
-    --glass-bg: rgba(0, 0, 0, 0.4); 
-    --border-color: rgba(232, 245, 233, 0.2); 
-    --input-bg: rgba(0, 0, 0, 0.5);
-    --nav-active-bg: #1b5e20;
+# --- HELPER: NEW MODERN UI/UX THEMES ---
+
+# Light Theme: Fresh, high-contrast, clean
+light_theme = """
+    --bg-main: #F4F7F5;          /* Very soft grey-green background */
+    --bg-card: #FFFFFF;          /* Pure white cards */
+    --text-main: #1C2B23;        /* Very dark green/grey for ultimate readability */
+    --text-muted: #5A6D62;       /* Medium green/grey for secondary text */
+    --accent-primary: #2E7D32;   /* Strong agricultural green */
+    --accent-hover: #1B5E20;     /* Darker green for hover states */
+    --border-color: #E0E8E3;     /* Soft border */
+    --input-bg: #FFFFFF;         /* White input boxes */
+    --shadow: 0 4px 12px rgba(46, 125, 50, 0.08);
 """
 
-current_theme_css = dark_theme_css if st.session_state.settings['dark_mode'] else light_theme_css
+# Dark Theme: Deep, rich, low eye-strain
+dark_theme = """
+    --bg-main: #0B120E;          /* Very dark forest background */
+    --bg-card: #14221A;          /* Slightly lighter dark green for cards */
+    --text-main: #E8F5E9;        /* Soft mint white for high readability */
+    --text-muted: #A3B8AC;       /* Muted mint for secondary text */
+    --accent-primary: #66BB6A;   /* Bright natural green */
+    --accent-hover: #81C784;     /* Lighter green for hover states */
+    --border-color: #21362A;     /* Dark border */
+    --input-bg: #0B120E;         /* Dark input boxes */
+    --shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+"""
+
+current_theme = dark_theme if st.session_state.settings['dark_mode'] else light_theme
 
 st.markdown(f"""
 <style>
     :root {{
-        {current_theme_css}
-    }}
-    .stApp {{
-        background-color: var(--main-bg-color);
+        {current_theme}
     }}
     
-    /* Apply our theme to native Streamlit containers (Fixes the News/History box issue!) */
-    [data-testid="stVerticalBlockBorderWrapper"] {{
-        background: var(--glass-bg) !important;
-        border-radius: 20px !important;
-        border: 1px solid var(--border-color) !important;
+    /* Backgrounds */
+    .stApp {{
+        background-color: var(--bg-main);
+    }}
+    
+    /* Enforce Global Text Colors for Readability */
+    h1, h2, h3, h4, h5, h6, p, span, label, div {{
+        color: var(--text-main) !important;
+        font-family: 'Inter', sans-serif;
+    }}
+    .stMarkdown p, .stCaption p {{
+        color: var(--text-muted) !important;
     }}
 
-    /*Glassmorphism Containers for standard divs*/
-    .glass-container {{
-        background: var(--glass-bg);
-        border-radius: 20px;
-        border: 1px solid var(--border-color);
-        padding: 20px;
-        margin-bottom: 15px;
-        color: var(--text-color);
+    /* Card Containers */
+    [data-testid="stVerticalBlockBorderWrapper"], .custom-card {{
+        background-color: var(--bg-card) !important;
+        border-radius: 16px !important;
+        border: 1px solid var(--border-color) !important;
+        box-shadow: var(--shadow) !important;
+        padding: 5px;
     }}
-    
-    /*Nav Pills*/
+    .custom-card {{
+        padding: 24px;
+        margin-bottom: 20px;
+    }}
+
+    /* Navigation Pills */
     .nav-pills {{
         display: flex;
         justify-content: center;
-        gap: 10px;
-        padding-bottom: 20px;
+        gap: 12px;
+        padding-bottom: 24px;
     }}
     .nav-pill-btn {{
-        background: var(--glass-bg);
+        background-color: var(--bg-card);
         border: 1px solid var(--border-color);
-        border-radius: 30px;
-        padding: 8px 25px;
-        color: var(--text-color);
+        border-radius: 20px;
+        padding: 10px 24px;
+        color: var(--text-main);
         cursor: pointer;
-        transition: 0.3s;
-        text-align: center;
-        font-weight: 500;
+        transition: all 0.2s ease;
+        font-weight: 600;
+        box-shadow: var(--shadow);
     }}
-    .nav-pill-btn:hover {{ background: var(--border-color); color: var(--text-color); }}
-    .nav-active {{ background: var(--nav-active-bg) !important; color: var(--text-color) !important; font-weight: bold; }}
+    .nav-pill-btn:hover {{
+        border-color: var(--accent-primary);
+        color: var(--accent-primary);
+    }}
+    .nav-active {{
+        background-color: var(--accent-primary) !important;
+        color: #ffffff !important; /* Always white text on active pill */
+        border-color: var(--accent-primary) !important;
+    }}
 
-    /*Inputs*/
-    .stTextInput input, .stSelectbox div[data-baseweb="select"] > div, .stTextArea textarea {{
+    /* Inputs & Selectboxes */
+    .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] > div {{
         background-color: var(--input-bg) !important;
-        color: var(--text-color) !important;
-        border-radius: 15px !important;
+        color: var(--text-main) !important;
+        border-radius: 12px !important;
         border: 1px solid var(--border-color) !important;
     }}
+    .stTextInput input:focus, .stSelectbox div[data-baseweb="select"] > div:focus {{
+        border-color: var(--accent-primary) !important;
+        box-shadow: 0 0 0 1px var(--accent-primary) !important;
+    }}
     .stSelectbox div[data-baseweb="select"] span {{
-        color: var(--text-color) !important;
+        color: var(--text-main) !important;
     }}
 
-    /*Headings*/
-    h1, h2, h3, h4, p, label, .stMarkdown p {{ color: var(--text-color) !important; }}
+    /* Chat Elements */
+    [data-testid="stChatMessage"] {{
+        background-color: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 15px;
+        margin-bottom: 10px;
+    }}
+
+    /* Hide standard header/footer */
     #MainMenu, footer, header {{visibility: hidden;}}
 </style>
 """, unsafe_allow_html=True)
@@ -168,7 +202,7 @@ def get_personalized_prompts():
     return [
         f"Best crop rotation plan for {loc}?",
         f"How to improve {st.session_state.settings['soil_type']} health organically?",
-        f"Water saving techniques for {st.session_state.settings['water_condition']} water availability.",
+        f"Water saving techniques for {st.session_state.settings['water_condition']} availability.",
         "Current market prices for major crops in my mandi.",
         "Pest control measures for Fall Armyworm.",
         "Government subsidies available for drip irrigation.",
@@ -214,7 +248,8 @@ st.markdown("<br>", unsafe_allow_html=True)
 if st.session_state.page == 'Home':
 
     if not st.session_state.searching:
-        st.markdown(f"<h1 style='text-align: center; font-size: 3.5rem; font-weight: 700;'>AGRO NOVA</h1>", unsafe_allow_html=True)
+        # Accent color applied directly to main title
+        st.markdown(f"<h1 style='text-align: center; font-size: 3.5rem; font-weight: 800; color: var(--accent-primary) !important;'>AGRO NOVA</h1>", unsafe_allow_html=True)
         st.markdown(f"<p style='text-align: center; font-size: 1.2rem;'>Your AI Farming Tool for {st.session_state.settings['state']}</p><br>", unsafe_allow_html=True)
 
         with st.container():
@@ -250,7 +285,7 @@ if st.session_state.page == 'Home':
                 st.session_state.uploaded_image = None
             st.rerun()
 
-        st.markdown(f"### {t('personalized_prompts')}")
+        st.markdown(f"<br><h3>{t('personalized_prompts')}</h3>", unsafe_allow_html=True)
         prompts = get_personalized_prompts()
 
         p_cols = st.columns(2)
@@ -274,12 +309,11 @@ if st.session_state.page == 'Home':
 
         with c_hist:
             if st.session_state.show_history:
-                # FIXED: Moved button outside of native container
                 if st.button("← Close", key="close_hist"):
                     st.session_state.show_history=False
                     st.rerun()
 
-                with st.container(height=500, border=True):
+                with st.container(height=550, border=True):
                     st.markdown(f"<h3>{t('history')}</h3>", unsafe_allow_html=True)
                     for i, (user_msg, ai_msg) in enumerate(reversed(st.session_state.chat_history)):
                         st.markdown(f"**Q:** {user_msg[:30]}...")
@@ -295,7 +329,7 @@ if st.session_state.page == 'Home':
                      st.rerun()
 
         with c_chat:
-             chat_container = st.container(height=500, border=True)
+             chat_container = st.container(height=550, border=True)
              with chat_container:
                  for user_msg, ai_msg in st.session_state.chat_history:
                      with st.chat_message("user"): st.write(user_msg)
@@ -310,17 +344,16 @@ if st.session_state.page == 'Home':
 
         with c_news:
             if st.session_state.show_news:
-                # FIXED: Moved button outside of native container
                 if st.button("Close →", key="close_news"):
                      st.session_state.show_news=False
                      st.rerun()
 
-                with st.container(height=500, border=True):
+                with st.container(height=550, border=True):
                     st.markdown(f"<h3>{t('news')}</h3>", unsafe_allow_html=True)
                     news_items = get_agri_news()
                     for item in news_items:
                         st.markdown(f"**{item['title']}**")
-                        st.markdown(f"*{item['source']}*")
+                        st.markdown(f"<small>{item['source']}</small>", unsafe_allow_html=True)
                         st.markdown("---")
             else:
                  if st.button("📰 News", key="open_news", use_container_width=True):
@@ -333,9 +366,9 @@ elif st.session_state.page == 'Profile':
     col_p_left, col_p_right = st.columns([1, 2])
 
     with col_p_left:
-        st.markdown(f"<div class='glass-container' style='text-align: center;'>", unsafe_allow_html=True)
+        st.markdown(f"<div class='custom-card' style='text-align: center;'>", unsafe_allow_html=True)
         st.image("https://cdn-icons-png.flaticon.com/512/3135/3135715.png", width=120)
-        st.markdown(f"### {st.session_state.settings['name']}")
+        st.markdown(f"<h3>{st.session_state.settings['name']}</h3>")
 
         st.markdown("<div style='text-align: left; margin-top: 20px;'>", unsafe_allow_html=True)
         st.markdown(f"**📍 Location:** {st.session_state.settings['state']}, {st.session_state.settings['country']}")
@@ -350,26 +383,26 @@ elif st.session_state.page == 'Profile':
                  st.rerun()
 
     with col_p_right:
-        st.markdown(f"<div class='glass-container'>", unsafe_allow_html=True)
+        st.markdown(f"<div class='custom-card'>", unsafe_allow_html=True)
 
         w_data = get_weather_data()
         c_w1, c_w2 = st.columns([1,3])
-        with c_w1: st.markdown(f"# {w_data['temp']}")
-        with c_w2: st.markdown(f"### {t('weather')}\n{w_data['condition']}, Humidity: {w_data['humidity']}")
+        with c_w1: st.markdown(f"<h1 style='color: var(--accent-primary) !important;'>{w_data['temp']}</h1>", unsafe_allow_html=True)
+        with c_w2: st.markdown(f"<h3>{t('weather')}</h3><p>{w_data['condition']}, Humidity: {w_data['humidity']}</p>", unsafe_allow_html=True)
         st.markdown("---")
 
         c_h1, c_h2 = st.columns(2)
         with c_h1:
-             st.markdown(f"### ⏳ {t('harvest')}")
-             st.markdown("## 45 Days")
-             st.markdown("*(Wheat)*")
+             st.markdown(f"<h3>⏳ {t('harvest')}</h3>", unsafe_allow_html=True)
+             st.markdown("<h2 style='color: var(--accent-primary) !important;'>45 Days</h2>", unsafe_allow_html=True)
+             st.markdown("<p>*(Wheat)*</p>", unsafe_allow_html=True)
         with c_h2:
-             st.markdown(f"### 🌾 {t('seeds')}")
+             st.markdown(f"<h3>🌾 {t('seeds')}</h3>", unsafe_allow_html=True)
              for seed in get_seed_recommendations():
-                 st.write(f"- {seed}")
+                 st.markdown(f"- {seed}")
         st.markdown("---")
 
-        st.markdown(f"### 💡 {t('tips')}")
+        st.markdown(f"<h3>💡 {t('tips')}</h3>", unsafe_allow_html=True)
         tip_prompt = f"Give 3 short, critical farming tips for {st.session_state.settings['state']} right now considering {st.session_state.settings['water_condition']} water."
         if 'profile_tips' not in st.session_state:
              with st.spinner("Loading personalized tips..."):
@@ -380,14 +413,14 @@ elif st.session_state.page == 'Profile':
 
 # ================= PAGE: SETTING =================
 elif st.session_state.page == 'Setting':
-    st.markdown(f"<div class='glass-container'><h2>{t('setting')}</h2></div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='custom-card'><h2>{t('setting')}</h2></div>", unsafe_allow_html=True)
 
     with st.form("settings_form"):
         c_s1, c_s2 = st.columns(2)
 
         with c_s1:
-            st.markdown("<div class='glass-container'>", unsafe_allow_html=True)
-            st.markdown("### Location & Soil")
+            st.markdown("<div class='custom-card'>", unsafe_allow_html=True)
+            st.markdown("<h3>Location & Soil</h3>", unsafe_allow_html=True)
 
             all_countries = dict(countries_for_language('en'))
             country_names = list(all_countries.values())
@@ -411,8 +444,8 @@ elif st.session_state.page == 'Setting':
             st.markdown("</div>", unsafe_allow_html=True)
 
         with c_s2:
-            st.markdown("<div class='glass-container'>", unsafe_allow_html=True)
-            st.markdown("### App Preferences")
+            st.markdown("<div class='custom-card'>", unsafe_allow_html=True)
+            st.markdown("<h3>App Preferences</h3>", unsafe_allow_html=True)
 
             langs = ['English', 'Hindi', 'Marathi', 'Spanish', 'French']
             sel_lang = st.selectbox("Language", langs, index=langs.index(st.session_state.settings['language']))
@@ -420,7 +453,7 @@ elif st.session_state.page == 'Setting':
             sel_dark_mode = st.toggle(t('dark_mode'), value=st.session_state.settings['dark_mode'])
 
             st.markdown("---")
-            st.markdown("### 🔑 API Keys")
+            st.markdown("<h3>🔑 API Keys</h3>", unsafe_allow_html=True)
             key_gemini = st.text_input("Google Gemini API Key", value=st.session_state.settings['gemini_key'], type="password")
             key_weather = st.text_input("OpenWeatherMap Key", value=st.session_state.settings['weather_key'], type="password")
             key_news = st.text_input("NewsAPI Key", value=st.session_state.settings['news_key'], type="password")

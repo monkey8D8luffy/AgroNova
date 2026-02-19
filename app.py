@@ -49,43 +49,37 @@ def t(key):
     lang = st.session_state.settings.get('language', 'English')
     return translations.get(lang, translations['English']).get(key, key)
 
-# --- HELPER: CSS & ASSETS ---
-def get_base64_of_bin_file(bin_file):
-    with open(bin_file, 'rb') as f:
-        data = f.read()
-    return base64.b64encode(data).decode()
-
-# FIXED: Updated to use the new 'image_3.png' and changed MIME type to image/png
-image_filename = "image_3.png"
-try:
-    img_base64 = get_base64_of_bin_file(image_filename)
-    bg_image_css = f'url("data:image/png;base64,{img_base64}")'
-except FileNotFoundError:
-    st.error(f"Image '{image_filename}' not found. Please ensure it is in the exact same folder as your Python file.")
-    bg_image_css = ""
-
-dark_mode_css = """
-    --bg-overlay: rgba(0, 0, 0, 0.75);
-    --glass-bg: rgba(0, 0, 0, 0.5);
-    --text-color: #e0e0e0;
-    --input-bg: rgba(255, 255, 255, 0.1);
-""" if st.session_state.settings['dark_mode'] else """
-    --bg-overlay: rgba(255, 255, 255, 0.5);
-    --glass-bg: rgba(255, 255, 255, 0.7);
-    --text-color: #0b3d0b;
-    --input-bg: rgba(255, 255, 255, 0.8);
+# --- HELPER: CSS & ASSETS (REMOVED IMAGE LOGIC, ADDED GREEN THEMES) ---
+# Light Theme: Light green background, dark green text
+light_theme_css = """
+    --main-bg-color: #e8f5e9; 
+    --text-color: #0f3d0f;    
+    --glass-bg: rgba(255, 255, 255, 0.65); 
+    --border-color: rgba(15, 61, 15, 0.2); 
+    --input-bg: rgba(255, 255, 255, 0.9);
+    --nav-active-bg: #c8e6c9; 
 """
+
+# Dark Theme: Dark green background, light green text
+dark_theme_css = """
+    --main-bg-color: #0b2e0b; 
+    --text-color: #e8f5e9;    
+    --glass-bg: rgba(0, 0, 0, 0.4); 
+    --border-color: rgba(232, 245, 233, 0.2); 
+    --input-bg: rgba(0, 0, 0, 0.5);
+    --nav-active-bg: #1b5e20;
+"""
+
+current_theme_css = dark_theme_css if st.session_state.settings['dark_mode'] else light_theme_css
 
 st.markdown(f"""
 <style>
     :root {{
-        {dark_mode_css}
+        {current_theme_css}
     }}
     .stApp {{
-        background-image: linear-gradient(var(--bg-overlay), var(--bg-overlay)), {bg_image_css};
-        background-size: cover;
-        background-position: center;
-        background-attachment: fixed;
+        background-color: var(--main-bg-color);
+        background-image: none; /* Ensure no image tries to load */
     }}
     /*Glassmorphism Containers*/
     .glass-container {{
@@ -93,7 +87,7 @@ st.markdown(f"""
         backdrop-filter: blur(15px);
         -webkit-backdrop-filter: blur(15px);
         border-radius: 20px;
-        border: 1px solid rgba(255, 255, 255, 0.18);
+        border: 1px solid var(--border-color);
         padding: 20px;
         margin-bottom: 15px;
         color: var(--text-color);
@@ -108,7 +102,7 @@ st.markdown(f"""
     .nav-pill-btn {{
         background: var(--glass-bg);
         backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.2);
+        border: 1px solid var(--border-color);
         border-radius: 30px;
         padding: 8px 25px;
         color: var(--text-color);
@@ -117,15 +111,18 @@ st.markdown(f"""
         text-align: center;
         font-weight: 500;
     }}
-    .nav-pill-btn:hover {{ background: rgba(255,255,255,0.4); color: #1a4a1c; }}
-    .nav-active {{ background: #aed581 !important; color: #1a4a1c !important; font-weight: bold; }}
+    .nav-pill-btn:hover {{ background: var(--border-color); color: var(--text-color); }}
+    .nav-active {{ background: var(--nav-active-bg) !important; color: var(--text-color) !important; font-weight: bold; }}
 
     /*Inputs*/
     .stTextInput input, .stSelectbox div[data-baseweb="select"] > div, .stTextArea textarea {{
         background-color: var(--input-bg) !important;
         color: var(--text-color) !important;
         border-radius: 15px !important;
-        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        border: 1px solid var(--border-color) !important;
+    }}
+    .stSelectbox div[data-baseweb="select"] span {{
+        color: var(--text-color) !important;
     }}
 
     /*Headings*/
@@ -145,7 +142,6 @@ def configure_gemini():
 def get_gemini_response(prompt, image=None):
     if not configure_gemini(): return "⚠️ Please set your Google Gemini API Key in Settings."
     try:
-        # FIXED: Using a model explicitly supported by your API key based on your error logs
         model_name = 'gemini-2.0-flash'
         model = genai.GenerativeModel(model_name)
 
@@ -218,7 +214,7 @@ st.markdown("<br>", unsafe_allow_html=True)
 if st.session_state.page == 'Home':
 
     if not st.session_state.searching:
-        st.markdown(f"<h1 style='text-align: center; font-size: 3.5rem; font-weight: 700; color: #aed581 !important;'>AGRO NOVA</h1>", unsafe_allow_html=True)
+        st.markdown(f"<h1 style='text-align: center; font-size: 3.5rem; font-weight: 700;'>AGRO NOVA</h1>", unsafe_allow_html=True)
         st.markdown(f"<p style='text-align: center; font-size: 1.2rem;'>Your AI Farming Tool for {st.session_state.settings['state']}</p><br>", unsafe_allow_html=True)
 
         with st.container():

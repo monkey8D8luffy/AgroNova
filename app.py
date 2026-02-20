@@ -116,7 +116,9 @@ def get_gemini_response(prompt, image=None):
     if not configure_gemini(): 
         return "⚠️ No API Key found. Please paste it in the Settings tab."
     try:
-        model = genai.GenerativeModel('gemini-2.0-flash')
+        # --- FIX: Changed from 2.0-flash to 1.5-flash for Free Tier compatibility ---
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        
         settings = st.session_state.settings
         crop = settings.get('crop', 'Wheat')
         settings_context = f"Context: User is a farmer in {settings.get('state', 'Maharashtra')}, {settings.get('country', 'India')}. Crop: {crop}. Soil: {settings.get('soil_type', 'Red Soil')}. Water: {settings.get('water_condition', 'Good')}. Respond EXCLUSIVELY in {settings.get('language', 'English')}."
@@ -131,7 +133,6 @@ def get_gemini_response(prompt, image=None):
             return "❌ API Key is invalid or expired. Please update it in the Settings tab."
         else:
             return f"❌ AI Connection Error: {str(e)}"
-
 def get_dynamic_prompts():
     """STATIC, ZERO-QUOTA PROMPTS"""
     crop = st.session_state.settings.get('crop', 'Wheat')

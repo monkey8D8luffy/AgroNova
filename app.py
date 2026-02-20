@@ -28,11 +28,10 @@ def init_session_state():
         'gemini_key': os.getenv('GOOGLE_API_KEY', ''),
     }
     
-    # Bulletproof initialization
+    # Bulletproof initialization: Fill in ANY missing keys
     if 'settings' not in st.session_state: 
         st.session_state.settings = default_settings.copy()
     else:
-        # Force add missing keys to existing cached sessions
         for key, value in default_settings.items():
             if key not in st.session_state.settings:
                 st.session_state.settings[key] = value
@@ -53,20 +52,20 @@ LANGUAGES = [
     "Bengali", "Punjabi", "Spanish", "French", "German", "Mandarin", "Arabic", "Russian", "Portuguese"
 ]
 
-CROP_DURATIONS = { # Average days to harvest
+CROP_DURATIONS = {
     'Wheat': 120, 'Rice (Paddy)': 150, 'Maize (Corn)': 100, 'Sugarcane': 365,
     'Cotton': 160, 'Soybean': 95, 'Tomato': 70, 'Potato': 90
 }
 
-translations = {
-    'English': {'home': 'Home', 'profile': 'Profile', 'setting': 'Setting', 'search_placeholder': 'Ask anything about farming...', 'personalized_prompts': 'Personalized Prompts', 'weather': 'Weather', 'tips': 'Harvesting Tips', 'harvest': 'Harvest Countdown', 'seeds': 'Recommended Seeds', 'save': 'Save Settings', 'history': 'History', 'news': 'Local Ag News'},
-}
 def t(key):
+    translations = {
+        'English': {'home': 'Home', 'profile': 'Profile', 'setting': 'Setting', 'search_placeholder': 'Ask anything about farming...', 'personalized_prompts': 'Personalized Prompts', 'weather': 'Weather', 'tips': 'Harvesting Tips', 'harvest': 'Harvest Countdown', 'seeds': 'Recommended Seeds', 'save': 'Save Settings', 'history': 'History', 'news': 'Local Ag News'},
+    }
     lang = st.session_state.settings.get('language', 'English')
     return translations.get(lang, translations['English']).get(key, key)
 
 # --- HELPER: API INTEGRATIONS ---
-@st.cache_data(ttl=86400) # Cache country data for 24 hours
+@st.cache_data(ttl=86400)
 def get_countries_and_states():
     try:
         response = requests.get("https://countriesnow.space/api/v0.1/countries/states", timeout=5)
@@ -76,7 +75,7 @@ def get_countries_and_states():
     except Exception: pass
     return {"India": ["Maharashtra", "Punjab", "Gujarat"], "United States": ["California", "Texas"]}
 
-@st.cache_data(ttl=1800) # Cache weather warnings for 30 mins
+@st.cache_data(ttl=1800)
 def get_weather_warning(location):
     try:
         sanitized_loc = location.replace(" ", "+")
@@ -90,9 +89,9 @@ def get_weather_warning(location):
             SEVERE_CONDITIONS = ['thunder', 'torrential', 'heavy rain', 'snow', 'blizzard', 'flood', 'storm']
             
             if any(cond in current_condition for cond in SEVERE_CONDITIONS):
-                return f"⚠️ SEVERE WEATHER ALERT: {current_condition.title()} detected in your area. Please take precautions."
+                return f"⚠️ SEVERE WEATHER ALERT: {current_condition.title()} detected in your area."
             elif temp_c > 40:
-                return f"⚠️ HEATWAVE ALERT: Extreme temperatures ({temp_c}°C) detected. Ensure proper irrigation."
+                return f"⚠️ HEATWAVE ALERT: Extreme temperatures ({temp_c}°C) detected."
     except Exception: pass
     return None
 
@@ -102,16 +101,18 @@ def configure_gemini():
     return key is not None and key != ''
 
 def get_gemini_response(prompt, image=None):
-    if not configure_gemini(): return "⚠️ Please set your Google Gemini API Key in your .env file."
+    if not configure_gemini(): return "⚠️ Please set a valid Google Gemini API Key in your settings or Streamlit Secrets."
     try:
         model = genai.GenerativeModel('gemini-2.0-flash')
         settings = st.session_state.settings
         crop = settings.get('crop', 'Wheat')
-        settings_context = f"Context: User is a farmer in {settings.get('state', 'Maharashtra')}, {settings.get('country', 'India')}. Crop: {crop}. Soil: {settings.get('soil_type', 'Red Soil')}. Water: {settings.get('water_condition', 'Good')}. IMPORTANT: Respond EXCLUSIVELY in {settings.get('language', 'English')}."
+        settings_context = f"Context: User is a farmer in {settings.get('state', 'Maharashtra')}, {settings.get('country', 'India')}. Crop: {crop}. Soil: {settings.get('soil_type', 'Red Soil')}. Water: {settings.get('water_condition', 'Good')}. Respond EXCLUSIVELY in {settings.get('language', 'English')}."
         full_prompt = f"{settings_context}\nQuestion: {prompt}"
         response = model.generate_content([full_prompt, image]) if image else model.generate_content(full_prompt)
         return response.text
-    except Exception as e: return f"Error connecting to AI: {e}"
+    except Exception as e: 
+        # Handles 429 and 400 errors cleanly in chat
+        return f"AI Service temporarily unavailable (Quota/Key Error). Please check your API key or try again in a minute."
 
 def get_dynamic_prompts():
     settings_str = str(st.session_state.settings)
@@ -120,6 +121,7 @@ def get_dynamic_prompts():
     
     current_crop = st.session_state.settings.get('crop', 'Wheat')
     fallback_prompts = [f"Best fertilizer for {current_crop}?", "Organic soil health tips?", "Water saving techniques?", "Pest control tips?"]
+    
     if not configure_gemini(): return fallback_prompts
 
     try:
@@ -133,7 +135,9 @@ def get_dynamic_prompts():
                 st.session_state.cached_prompts = prompts_list
                 st.session_state.prompts_hash = settings_str
                 return prompts_list
-    except Exception: pass
+    except Exception: 
+        # Fails silently if quota is exceeded
+        pass
     return fallback_prompts
 
 def get_harvesting_tips():
@@ -142,6 +146,7 @@ def get_harvesting_tips():
     
     current_crop = st.session_state.settings.get('crop', 'Wheat')
     fallback_tip = f"Monitor {current_crop} moisture levels closely before harvest. Ensure equipment is serviced to prevent field losses."
+    
     if not configure_gemini(): return fallback_tip
 
     try:
@@ -151,7 +156,9 @@ def get_harvesting_tips():
         st.session_state.cached_tips = tip
         st.session_state.tips_hash = settings_str
         return tip
-    except Exception: return fallback_tip
+    except Exception: 
+        # Fails silently if quota is exceeded
+        return fallback_tip
 
 def get_weather_data(): return {"temp": "28°C", "condition": "Partly Cloudy", "humidity": "65%"}
 
@@ -160,9 +167,7 @@ def get_agri_news():
         {"title": "New agricultural subsidies announced for drip irrigation", "source": "Ministry of Agriculture"},
         {"title": "Monsoon forecast upgraded to 'Above Normal'", "source": "Meteorological Dept"},
         {"title": "Global fertilizer prices see a 5% drop this month", "source": "Agri-Market Watch"},
-        {"title": "New pest resistant cotton variety approved for trials", "source": "Research Council"},
-        {"title": "Local mandi prices show upward trend for Kharif crops", "source": "Local Mandi Samiti"},
-        {"title": "Government launches new organic certification scheme", "source": "Gov Press Release"}
+        {"title": "New pest resistant cotton variety approved for trials", "source": "Research Council"}
     ]
 
 # --- PROFESSIONAL UI/UX CSS ---
@@ -418,6 +423,10 @@ elif st.session_state.page == 'Setting':
         l_idx = LANGUAGES.index(current_lang) if current_lang in LANGUAGES else 0
         sel_lang = st.selectbox("Language", LANGUAGES, index=l_idx)
         st.caption("AI responses will automatically translate to your selected language.")
+        
+        st.markdown("<h4 style='margin-top:20px;'>🔑 API Configuration</h4>", unsafe_allow_html=True)
+        new_key = st.text_input("Gemini API Key", type="password", value=st.session_state.settings.get('gemini_key', ''))
+        st.caption("Your API key is required to use AI features.")
         st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
@@ -425,7 +434,8 @@ elif st.session_state.page == 'Setting':
         st.session_state.settings.update({
             'country': sel_country, 'state': sel_state, 
             'soil_type': sel_soil, 'water_condition': sel_water, 
-            'language': sel_lang, 'crop': sel_crop, 'sowing_date': sel_date
+            'language': sel_lang, 'crop': sel_crop, 'sowing_date': sel_date,
+            'gemini_key': new_key
         })
         st.success("Settings Saved Successfully!")
         get_weather_warning.clear() 

@@ -27,7 +27,16 @@ def init_session_state():
         'crop': 'Wheat', 'sowing_date': datetime.date.today() - datetime.timedelta(days=45),
         'gemini_key': os.getenv('GOOGLE_API_KEY', ''),
     }
-    if 'settings' not in st.session_state: st.session_state.settings = default_settings.copy()
+    
+    # Bulletproof initialization
+    if 'settings' not in st.session_state: 
+        st.session_state.settings = default_settings.copy()
+    else:
+        # Force add missing keys to existing cached sessions
+        for key, value in default_settings.items():
+            if key not in st.session_state.settings:
+                st.session_state.settings[key] = value
+
     if 'page' not in st.session_state: st.session_state.page = 'Home'
     if 'searching' not in st.session_state: st.session_state.searching = False
     if 'chat_history' not in st.session_state: st.session_state.chat_history = []
@@ -70,7 +79,6 @@ def get_countries_and_states():
 @st.cache_data(ttl=1800) # Cache weather warnings for 30 mins
 def get_weather_warning(location):
     try:
-        # Free API for weather alerts
         sanitized_loc = location.replace(" ", "+")
         url = f"https://wttr.in/{sanitized_loc}?format=j1"
         response = requests.get(url, timeout=3)
@@ -98,7 +106,8 @@ def get_gemini_response(prompt, image=None):
     try:
         model = genai.GenerativeModel('gemini-2.0-flash')
         settings = st.session_state.settings
-        settings_context = f"Context: User is a farmer in {settings['state']}, {settings['country']}. Crop: {settings['crop']}. Soil: {settings['soil_type']}. Water: {settings['water_condition']}. IMPORTANT: Respond EXCLUSIVELY in {settings['language']}."
+        crop = settings.get('crop', 'Wheat')
+        settings_context = f"Context: User is a farmer in {settings.get('state', 'Maharashtra')}, {settings.get('country', 'India')}. Crop: {crop}. Soil: {settings.get('soil_type', 'Red Soil')}. Water: {settings.get('water_condition', 'Good')}. IMPORTANT: Respond EXCLUSIVELY in {settings.get('language', 'English')}."
         full_prompt = f"{settings_context}\nQuestion: {prompt}"
         response = model.generate_content([full_prompt, image]) if image else model.generate_content(full_prompt)
         return response.text
@@ -109,12 +118,13 @@ def get_dynamic_prompts():
     if 'cached_prompts' in st.session_state and st.session_state.get('prompts_hash') == settings_str:
         return st.session_state.cached_prompts
     
-    fallback_prompts = [f"Best fertilizer for {st.session_state.settings['crop']}?", "Organic soil health tips?", "Water saving techniques?", "Pest control tips?"]
+    current_crop = st.session_state.settings.get('crop', 'Wheat')
+    fallback_prompts = [f"Best fertilizer for {current_crop}?", "Organic soil health tips?", "Water saving techniques?", "Pest control tips?"]
     if not configure_gemini(): return fallback_prompts
 
     try:
         model = genai.GenerativeModel('gemini-2.0-flash')
-        prompt = f"Act as an agricultural expert. Generate exactly 4 short (under 7 words), highly specific questions a farmer growing {st.session_state.settings['crop']} in {st.session_state.settings['state']} with {st.session_state.settings['soil_type']} would ask an AI. Return output STRICTLY as a Python list of strings."
+        prompt = f"Act as an agricultural expert. Generate exactly 4 short (under 7 words), highly specific questions a farmer growing {current_crop} in {st.session_state.settings.get('state', 'Maharashtra')} with {st.session_state.settings.get('soil_type', 'Red Soil')} would ask an AI. Return output STRICTLY as a Python list of strings."
         res = model.generate_content(prompt).text
         start, end = res.find('['), res.rfind(']') + 1
         if start != -1 and end != -1:
@@ -130,12 +140,13 @@ def get_harvesting_tips():
     settings_str = str(st.session_state.settings)
     if 'cached_tips' in st.session_state and st.session_state.get('tips_hash') == settings_str: return st.session_state.cached_tips
     
-    fallback_tip = f"Monitor {st.session_state.settings['crop']} moisture levels closely before harvest. Ensure equipment is serviced to prevent field losses."
+    current_crop = st.session_state.settings.get('crop', 'Wheat')
+    fallback_tip = f"Monitor {current_crop} moisture levels closely before harvest. Ensure equipment is serviced to prevent field losses."
     if not configure_gemini(): return fallback_tip
 
     try:
         model = genai.GenerativeModel('gemini-2.0-flash')
-        prompt = f"Provide one concise, highly practical harvesting tip (max 3 sentences) for a farmer growing {st.session_state.settings['crop']} in {st.session_state.settings['state']} dealing with {st.session_state.settings['water_condition']} water conditions. Respond in {st.session_state.settings['language']}."
+        prompt = f"Provide one concise, highly practical harvesting tip (max 3 sentences) for a farmer growing {current_crop} in {st.session_state.settings.get('state', 'Maharashtra')} dealing with {st.session_state.settings.get('water_condition', 'Good')} water conditions. Respond in {st.session_state.settings.get('language', 'English')}."
         tip = model.generate_content(prompt).text
         st.session_state.cached_tips = tip
         st.session_state.tips_hash = settings_str
@@ -214,15 +225,14 @@ st.markdown("<br><br>", unsafe_allow_html=True)
 # ================= PAGE: HOME =================
 if st.session_state.page == 'Home':
     
-    # Check for weather warnings
-    loc_string = f"{st.session_state.settings['state']},{st.session_state.settings['country']}"
+    loc_string = f"{st.session_state.settings.get('state', 'Maharashtra')},{st.session_state.settings.get('country', 'India')}"
     warning = get_weather_warning(loc_string)
     if warning:
         st.error(warning, icon="⛈️")
 
     if not st.session_state.searching:
         st.markdown(f"<h1 style='text-align: center; font-size: 5.5rem; font-family: serif; letter-spacing: 5px; text-shadow: 2px 4px 15px rgba(0,0,0,0.6);'>AGRO NOVA</h1>", unsafe_allow_html=True)
-        st.markdown(f"<p style='text-align: center; font-size: 1.2rem; margin-bottom: 50px; opacity: 0.9;'>Your AI Farming Tool for {st.session_state.settings['state']}</p>", unsafe_allow_html=True)
+        st.markdown(f"<p style='text-align: center; font-size: 1.2rem; margin-bottom: 50px; opacity: 0.9;'>Your AI Farming Tool for {st.session_state.settings.get('state', 'Maharashtra')}</p>", unsafe_allow_html=True)
 
         with st.container():
             col_hist, col_search, col_news = st.columns([1, 6, 1])
@@ -263,12 +273,11 @@ if st.session_state.page == 'Home':
 
     # --- POST-SEARCH / CHAT VIEW ---
     else:
-        # Dynamic layout configuration
         show_h = st.session_state.show_history
         show_n = st.session_state.show_news
         
         if show_h and show_n:
-            cols = st.columns([2.5, 7, 2.5]) # Sidebars big, chat small
+            cols = st.columns([2.5, 7, 2.5]) 
         elif show_h:
             cols = st.columns([3, 8.5, 0.5])
         elif show_n:
@@ -315,19 +324,21 @@ if st.session_state.page == 'Home':
 # ================= PAGE: PROFILE =================
 elif st.session_state.page == 'Profile':
     col_p_left, col_p_right = st.columns([1, 2])
+    
+    current_crop = st.session_state.settings.get('crop', 'Wheat')
 
     with col_p_left:
         st.markdown(f"<div class='custom-card' style='text-align: center;'>", unsafe_allow_html=True)
         st.image("https://cdn-icons-png.flaticon.com/512/3135/3135715.png", width=100)
-        st.markdown(f"<h3 style='margin-top:10px;'>{st.session_state.settings['name']}</h3>", unsafe_allow_html=True)
+        st.markdown(f"<h3 style='margin-top:10px;'>{st.session_state.settings.get('name', 'Saurav')}</h3>", unsafe_allow_html=True)
         st.markdown("<div style='text-align: left; margin-top: 20px;'>", unsafe_allow_html=True)
-        st.markdown(f"**📍 Location:** {st.session_state.settings['state']}, {st.session_state.settings['country']}")
-        st.markdown(f"**🌱 Soil:** {st.session_state.settings['soil_type']}")
-        st.markdown(f"**🌾 Crop:** {st.session_state.settings['crop']}")
+        st.markdown(f"**📍 Location:** {st.session_state.settings.get('state', 'Maharashtra')}, {st.session_state.settings.get('country', 'India')}")
+        st.markdown(f"**🌱 Soil:** {st.session_state.settings.get('soil_type', 'Red Soil')}")
+        st.markdown(f"**🌾 Crop:** {current_crop}")
         st.markdown("</div></div>", unsafe_allow_html=True)
 
         with st.expander("✏️ Edit Name"):
-             new_name = st.text_input("Name", st.session_state.settings['name'])
+             new_name = st.text_input("Name", st.session_state.settings.get('name', 'Saurav'))
              if st.button("Update"): st.session_state.settings['name'] = new_name; st.rerun()
 
     with col_p_right:
@@ -338,10 +349,8 @@ elif st.session_state.page == 'Profile':
         with c_w2: st.markdown(f"<h3>{t('weather')}</h3><p>{w_data['condition']}, Humidity: {w_data['humidity']}</p>", unsafe_allow_html=True)
         st.markdown("---")
 
-        # HARVEST COUNTDOWN CALCULATION
-        sowing_date = st.session_state.settings['sowing_date']
-        crop = st.session_state.settings['crop']
-        total_days = CROP_DURATIONS.get(crop, 120)
+        sowing_date = st.session_state.settings.get('sowing_date', datetime.date.today() - datetime.timedelta(days=45))
+        total_days = CROP_DURATIONS.get(current_crop, 120)
         days_passed = (datetime.date.today() - sowing_date).days
         days_remaining = max(0, total_days - days_passed)
         progress = min(1.0, days_passed / total_days) if total_days > 0 else 0
@@ -373,34 +382,40 @@ elif st.session_state.page == 'Setting':
     with c_s1:
         st.markdown("<div class='custom-card'><h3>🌍 Location & Soil</h3>", unsafe_allow_html=True)
         
-        current_country = st.session_state.settings['country']
+        current_country = st.session_state.settings.get('country', 'India')
         c_idx = country_list.index(current_country) if current_country in country_list else 0
         sel_country = st.selectbox("Country", country_list, index=c_idx)
         
         state_list = country_dict.get(sel_country, ["Select State"])
-        current_state = st.session_state.settings['state']
+        current_state = st.session_state.settings.get('state', 'Maharashtra')
         s_idx = state_list.index(current_state) if current_state in state_list else 0
         sel_state = st.selectbox("State/Region", state_list, index=s_idx)
         
         soil_types = ['Red Soil', 'Black Cotton Soil', 'Alluvial Soil', 'Sandy Loam', 'Clayey', 'Laterite']
-        sel_soil = st.selectbox("Soil Type", soil_types, index=soil_types.index(st.session_state.settings['soil_type']) if st.session_state.settings['soil_type'] in soil_types else 0)
+        current_soil = st.session_state.settings.get('soil_type', 'Red Soil')
+        sel_soil = st.selectbox("Soil Type", soil_types, index=soil_types.index(current_soil) if current_soil in soil_types else 0)
         
         water_conds = ['Excellent (Irrigated)', 'Good (Seasonal)', 'Average', 'Poor (Rainfed)', 'Very Bad']
-        sel_water = st.selectbox("Water Condition", water_conds, index=water_conds.index(st.session_state.settings['water_condition']) if st.session_state.settings['water_condition'] in water_conds else 1)
+        current_water = st.session_state.settings.get('water_condition', 'Good')
+        sel_water = st.selectbox("Water Condition", water_conds, index=water_conds.index(current_water) if current_water in water_conds else 1)
         st.markdown("</div>", unsafe_allow_html=True)
 
     with c_s2:
         st.markdown("<div class='custom-card'><h3>🌾 Crop & Preferences</h3>", unsafe_allow_html=True)
         
         crop_list = list(CROP_DURATIONS.keys())
-        crop_idx = crop_list.index(st.session_state.settings['crop']) if st.session_state.settings['crop'] in crop_list else 0
+        current_crop = st.session_state.settings.get('crop', 'Wheat')
+        crop_idx = crop_list.index(current_crop) if current_crop in crop_list else 0
         sel_crop = st.selectbox("Current Crop", crop_list, index=crop_idx)
         
-        sel_date = st.date_input("Sowing Date", value=st.session_state.settings['sowing_date'], max_value=datetime.date.today())
+        default_date = datetime.date.today() - datetime.timedelta(days=45)
+        current_date = st.session_state.settings.get('sowing_date', default_date)
+        sel_date = st.date_input("Sowing Date", value=current_date, max_value=datetime.date.today())
 
         st.markdown("---")
         
-        l_idx = LANGUAGES.index(st.session_state.settings['language']) if st.session_state.settings['language'] in LANGUAGES else 0
+        current_lang = st.session_state.settings.get('language', 'English')
+        l_idx = LANGUAGES.index(current_lang) if current_lang in LANGUAGES else 0
         sel_lang = st.selectbox("Language", LANGUAGES, index=l_idx)
         st.caption("AI responses will automatically translate to your selected language.")
         st.markdown("</div>", unsafe_allow_html=True)
@@ -413,5 +428,5 @@ elif st.session_state.page == 'Setting':
             'language': sel_lang, 'crop': sel_crop, 'sowing_date': sel_date
         })
         st.success("Settings Saved Successfully!")
-        get_weather_warning.clear() # Clear warning cache to force new check
+        get_weather_warning.clear() 
         st.rerun()

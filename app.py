@@ -96,12 +96,27 @@ def get_weather_warning(location):
     return None
 
 def configure_gemini():
+    # 1. Check if user typed it in the Settings page
     key = st.session_state.settings.get('gemini_key')
-    if key: genai.configure(api_key=key)
-    return key is not None and key != ''
+    
+    # 2. If not, check Streamlit Cloud Secrets
+    if not key:
+        try:
+            key = st.secrets["GOOGLE_API_KEY"]
+        except:
+            pass
+            
+    # 3. If still not found, check local .env file
+    if not key:
+        key = os.getenv('GOOGLE_API_KEY')
+        
+    if key: 
+        genai.configure(api_key=key)
+        return True
+    return False
 
 def get_gemini_response(prompt, image=None):
-    if not configure_gemini(): return "⚠️ Please set a valid Google Gemini API Key in your settings or Streamlit Secrets."
+    if not configure_gemini(): return "⚠️ No API Key found. Please paste it in the Settings tab."
     try:
         model = genai.GenerativeModel('gemini-2.0-flash')
         settings = st.session_state.settings
@@ -111,9 +126,8 @@ def get_gemini_response(prompt, image=None):
         response = model.generate_content([full_prompt, image]) if image else model.generate_content(full_prompt)
         return response.text
     except Exception as e: 
-        # Handles 429 and 400 errors cleanly in chat
-        return f"AI Service temporarily unavailable (Quota/Key Error). Please check your API key or try again in a minute."
-
+        # This will print the EXACT error on your screen so we know what to fix
+        return f"❌ ERROR DETAILS: {str(e)}"
 def get_dynamic_prompts():
     settings_str = str(st.session_state.settings)
     if 'cached_prompts' in st.session_state and st.session_state.get('prompts_hash') == settings_str:

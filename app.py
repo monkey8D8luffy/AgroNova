@@ -121,7 +121,6 @@ def get_gemini_response(prompt, image=None):
         settings_context = f"Context: User is a farmer in {settings.get('state', 'Maharashtra')}, {settings.get('country', 'India')}. Crop: {crop}. Soil: {settings.get('soil_type', 'Red Soil')}. Water: {settings.get('water_condition', 'Good')}. Respond EXCLUSIVELY in {settings.get('language', 'English')}."
         full_prompt = f"{settings_context}\nQuestion: {prompt}"
         
-        # --- THE ULTIMATE FIX: AUTO-DETECT AVAILABLE MODELS ---
         # Ask Google exactly which models this API key is allowed to use right now
         available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
         
@@ -141,10 +140,9 @@ def get_gemini_response(prompt, image=None):
         
         return response.text
 
-   except Exception as e: 
+    except Exception as e: 
         error_msg = str(e).lower()
         if "429" in error_msg or "quota" in error_msg:
-            # THIS LINE CHANGED: It will now print the exact quota limit numbers
             return f"❌ QUOTA ERROR DETAILS: {str(e)}" 
         elif "400" in error_msg or "invalid" in error_msg:
             return "❌ API Key is invalid or expired. Please update it in the Settings tab."

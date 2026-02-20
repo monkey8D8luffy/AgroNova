@@ -121,20 +121,24 @@ def get_gemini_response(prompt, image=None):
         settings_context = f"Context: User is a farmer in {settings.get('state', 'Maharashtra')}, {settings.get('country', 'India')}. Crop: {crop}. Soil: {settings.get('soil_type', 'Red Soil')}. Water: {settings.get('water_condition', 'Good')}. Respond EXCLUSIVELY in {settings.get('language', 'English')}."
         full_prompt = f"{settings_context}\nQuestion: {prompt}"
         
-        try:
-            # 1. First, try the newest, most efficient free model
-            model = genai.GenerativeModel('gemini-1.5-flash')
-            response = model.generate_content([full_prompt, image]) if image else model.generate_content(full_prompt)
+        # --- THE ULTIMATE FIX: AUTO-DETECT AVAILABLE MODELS ---
+        # Ask Google exactly which models this API key is allowed to use right now
+        available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+        
+        if not available_models:
+            return "❌ AI Error: Your API key does not have access to any models in this region."
             
-        except Exception as inner_e:
-            # 2. If Streamlit's older library throws a 404, instantly fall back to the legacy models
-            if "404" in str(inner_e):
-                fallback_model = 'gemini-pro-vision' if image else 'gemini-pro'
-                model = genai.GenerativeModel(fallback_model)
-                response = model.generate_content([full_prompt, image]) if image else model.generate_content(full_prompt)
-            else:
-                raise inner_e # Pass quota/key errors down to the main handler
+        # Try to find a 'flash' or 'pro' model, otherwise just grab the first valid one on the list
+        target_model_name = next((m for m in available_models if '1.5-flash' in m), None)
+        if not target_model_name:
+            target_model_name = next((m for m in available_models if 'pro' in m), available_models[0])
             
+        # Strip 'models/' prefix if it exists to prevent double-prefixing
+        clean_model_name = target_model_name.replace("models/", "")
+        
+        model = genai.GenerativeModel(clean_model_name)
+        response = model.generate_content([full_prompt, image]) if image else model.generate_content(full_prompt)
+        
         return response.text
 
     except Exception as e: 

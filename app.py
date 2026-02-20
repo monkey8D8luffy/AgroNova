@@ -141,10 +141,11 @@ def get_gemini_response(prompt, image=None):
         
         return response.text
 
-    except Exception as e: 
+   except Exception as e: 
         error_msg = str(e).lower()
         if "429" in error_msg or "quota" in error_msg:
-            return "⏳ AI is taking a quick break to prevent quota limits. Please wait 60 seconds and try your question again!"
+            # THIS LINE CHANGED: It will now print the exact quota limit numbers
+            return f"❌ QUOTA ERROR DETAILS: {str(e)}" 
         elif "400" in error_msg or "invalid" in error_msg:
             return "❌ API Key is invalid or expired. Please update it in the Settings tab."
         else:

@@ -113,31 +113,35 @@ def configure_gemini():
     return False
 
 def get_gemini_response(prompt, image=None):
+    # --- DEMO MODE BYPASS ---
+    if st.session_state.settings.get('demo_mode', False):
+        import time
+        time.sleep(1.5) # Simulate AI thinking
+        crop = st.session_state.settings.get('crop', 'your crop')
+        state = st.session_state.settings.get('state', 'your area')
+        return f"🌿 **AgroNova AI (Demo Mode)**\n\nBased on the current conditions for **{crop}** in **{state}**, here is the best approach for: *'{prompt}'*\n\n1. **Monitor Moisture:** Ensure your soil moisture is optimal before proceeding.\n2. **Organic Alternatives:** Consider natural treatments like Neem oil to preserve soil health.\n3. **Weather Tracking:** Keep an eye on the 48-hour forecast before applying fertilizers.\n\n*(Note: You are currently using Demo Mode. Turn this off in Settings to connect to the live Google AI).* "
+
     if not configure_gemini(): 
         return "⚠️ No API Key found. Please paste it in the Settings tab."
     try:
-        settings = st.session_state.settings
-        crop = settings.get('crop', 'Wheat')
-        settings_context = f"Context: User is a farmer in {settings.get('state', 'Maharashtra')}, {settings.get('country', 'India')}. Crop: {crop}. Soil: {settings.get('soil_type', 'Red Soil')}. Water: {settings.get('water_condition', 'Good')}. Respond EXCLUSIVELY in {settings.get('language', 'English')}."
-        full_prompt = f"{settings_context}\nQuestion: {prompt}"
-        
-        # Ask Google exactly which models this API key is allowed to use right now
+        # Ask Google exactly which models this API key is allowed to use
         available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
         
         if not available_models:
             return "❌ AI Error: Your API key does not have access to any models in this region."
             
-        # Try to find a 'flash' or 'pro' model, otherwise just grab the first valid one on the list
         target_model_name = next((m for m in available_models if '1.5-flash' in m), None)
         if not target_model_name:
             target_model_name = next((m for m in available_models if 'pro' in m), available_models[0])
             
-        # Strip 'models/' prefix if it exists to prevent double-prefixing
         clean_model_name = target_model_name.replace("models/", "")
-        
         model = genai.GenerativeModel(clean_model_name)
-        response = model.generate_content([full_prompt, image]) if image else model.generate_content(full_prompt)
         
+        settings = st.session_state.settings
+        settings_context = f"Context: User is a farmer in {settings.get('state')}. Crop: {settings.get('crop')}. Soil: {settings.get('soil_type')}."
+        full_prompt = f"{settings_context}\nQuestion: {prompt}"
+        
+        response = model.generate_content([full_prompt, image]) if image else model.generate_content(full_prompt)
         return response.text
 
     except Exception as e: 
@@ -441,6 +445,8 @@ elif st.session_state.page == 'Setting':
         
         st.markdown("<h4 style='margin-top:20px;'>🔑 API Configuration</h4>", unsafe_allow_html=True)
         new_key = st.text_input("Gemini API Key", type="password", value=st.session_state.settings.get('gemini_key', ''))
+        st.markdown("<h4 style='margin-top:20px;'>🛠️ Developer Options</h4>", unsafe_allow_html=True)
+        demo_mode = st.toggle("Enable Demo Mode (Bypasses API Quota Limits)", value=st.session_state.settings.get('demo_mode', False))
         st.caption("Your API key is required to use AI features.")
         st.markdown("</div>", unsafe_allow_html=True)
 

@@ -116,15 +116,27 @@ def get_gemini_response(prompt, image=None):
     if not configure_gemini(): 
         return "⚠️ No API Key found. Please paste it in the Settings tab."
     try:
-        # --- FIX: Changed from 2.0-flash to 1.5-flash for Free Tier compatibility ---
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        
         settings = st.session_state.settings
         crop = settings.get('crop', 'Wheat')
         settings_context = f"Context: User is a farmer in {settings.get('state', 'Maharashtra')}, {settings.get('country', 'India')}. Crop: {crop}. Soil: {settings.get('soil_type', 'Red Soil')}. Water: {settings.get('water_condition', 'Good')}. Respond EXCLUSIVELY in {settings.get('language', 'English')}."
         full_prompt = f"{settings_context}\nQuestion: {prompt}"
-        response = model.generate_content([full_prompt, image]) if image else model.generate_content(full_prompt)
+        
+        try:
+            # 1. First, try the newest, most efficient free model
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            response = model.generate_content([full_prompt, image]) if image else model.generate_content(full_prompt)
+            
+        except Exception as inner_e:
+            # 2. If Streamlit's older library throws a 404, instantly fall back to the legacy models
+            if "404" in str(inner_e):
+                fallback_model = 'gemini-pro-vision' if image else 'gemini-pro'
+                model = genai.GenerativeModel(fallback_model)
+                response = model.generate_content([full_prompt, image]) if image else model.generate_content(full_prompt)
+            else:
+                raise inner_e # Pass quota/key errors down to the main handler
+            
         return response.text
+
     except Exception as e: 
         error_msg = str(e).lower()
         if "429" in error_msg or "quota" in error_msg:

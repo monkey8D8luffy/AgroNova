@@ -3,7 +3,6 @@ import os
 import streamlit as st
 import google.generativeai as genai
 import requests
-import ast
 import datetime
 from PIL import Image
 
@@ -98,14 +97,12 @@ def get_weather_warning(location):
 def configure_gemini():
     # 1. Check if user typed it in the Settings page
     key = st.session_state.settings.get('gemini_key')
-    
     # 2. If not, check Streamlit Cloud Secrets
     if not key:
         try:
             key = st.secrets["GOOGLE_API_KEY"]
         except:
             pass
-            
     # 3. If still not found, check local .env file
     if not key:
         key = os.getenv('GOOGLE_API_KEY')
@@ -116,7 +113,8 @@ def configure_gemini():
     return False
 
 def get_gemini_response(prompt, image=None):
-    if not configure_gemini(): return "⚠️ No API Key found. Please paste it in the Settings tab."
+    if not configure_gemini(): 
+        return "⚠️ No API Key found. Please paste it in the Settings tab."
     try:
         model = genai.GenerativeModel('gemini-2.0-flash')
         settings = st.session_state.settings
@@ -126,53 +124,41 @@ def get_gemini_response(prompt, image=None):
         response = model.generate_content([full_prompt, image]) if image else model.generate_content(full_prompt)
         return response.text
     except Exception as e: 
-        # This will print the EXACT error on your screen so we know what to fix
-        return f"❌ ERROR DETAILS: {str(e)}"
-def get_dynamic_prompts():
-    settings_str = str(st.session_state.settings)
-    if 'cached_prompts' in st.session_state and st.session_state.get('prompts_hash') == settings_str:
-        return st.session_state.cached_prompts
-    
-    current_crop = st.session_state.settings.get('crop', 'Wheat')
-    fallback_prompts = [f"Best fertilizer for {current_crop}?", "Organic soil health tips?", "Water saving techniques?", "Pest control tips?"]
-    
-    if not configure_gemini(): return fallback_prompts
+        error_msg = str(e).lower()
+        if "429" in error_msg or "quota" in error_msg:
+            return "⏳ AI is taking a quick break to prevent quota limits. Please wait 60 seconds and try your question again!"
+        elif "400" in error_msg or "invalid" in error_msg:
+            return "❌ API Key is invalid or expired. Please update it in the Settings tab."
+        else:
+            return f"❌ AI Connection Error: {str(e)}"
 
-    try:
-        model = genai.GenerativeModel('gemini-2.0-flash')
-        prompt = f"Act as an agricultural expert. Generate exactly 4 short (under 7 words), highly specific questions a farmer growing {current_crop} in {st.session_state.settings.get('state', 'Maharashtra')} with {st.session_state.settings.get('soil_type', 'Red Soil')} would ask an AI. Return output STRICTLY as a Python list of strings."
-        res = model.generate_content(prompt).text
-        start, end = res.find('['), res.rfind(']') + 1
-        if start != -1 and end != -1:
-            prompts_list = ast.literal_eval(res[start:end])
-            if len(prompts_list) == 4:
-                st.session_state.cached_prompts = prompts_list
-                st.session_state.prompts_hash = settings_str
-                return prompts_list
-    except Exception: 
-        # Fails silently if quota is exceeded
-        pass
-    return fallback_prompts
+def get_dynamic_prompts():
+    """STATIC, ZERO-QUOTA PROMPTS"""
+    crop = st.session_state.settings.get('crop', 'Wheat')
+    soil = st.session_state.settings.get('soil_type', 'Red Soil')
+    
+    return [
+        f"Best fertilizer for {crop}?",
+        f"How to improve {soil} health?",
+        f"Water saving tips for {crop}?",
+        f"Common pest control for {crop}?"
+    ]
 
 def get_harvesting_tips():
-    settings_str = str(st.session_state.settings)
-    if 'cached_tips' in st.session_state and st.session_state.get('tips_hash') == settings_str: return st.session_state.cached_tips
+    """STATIC, ZERO-QUOTA HARVESTING TIPS"""
+    crop = st.session_state.settings.get('crop', 'Wheat')
     
-    current_crop = st.session_state.settings.get('crop', 'Wheat')
-    fallback_tip = f"Monitor {current_crop} moisture levels closely before harvest. Ensure equipment is serviced to prevent field losses."
-    
-    if not configure_gemini(): return fallback_tip
-
-    try:
-        model = genai.GenerativeModel('gemini-2.0-flash')
-        prompt = f"Provide one concise, highly practical harvesting tip (max 3 sentences) for a farmer growing {current_crop} in {st.session_state.settings.get('state', 'Maharashtra')} dealing with {st.session_state.settings.get('water_condition', 'Good')} water conditions. Respond in {st.session_state.settings.get('language', 'English')}."
-        tip = model.generate_content(prompt).text
-        st.session_state.cached_tips = tip
-        st.session_state.tips_hash = settings_str
-        return tip
-    except Exception: 
-        # Fails silently if quota is exceeded
-        return fallback_tip
+    tips_db = {
+        'Wheat': "Monitor grain moisture to reach 14% before harvest. Ensure combine harvester blades are sharp to prevent shattering.",
+        'Rice (Paddy)': "Drain the field 7-10 days before harvesting. Harvest when 80% of the panicles are straw-colored.",
+        'Maize (Corn)': "Harvest when the black layer forms at the base of the kernels. Check for stalk rot before bringing machinery in.",
+        'Sugarcane': "Stop irrigation 10-15 days before harvest to improve sugar recovery. Cut as close to the ground as possible.",
+        'Cotton': "Pick cotton when bolls are fully open and dry. Avoid picking wet cotton to prevent discoloration and fungal growth.",
+        'Soybean': "Harvest when pods are brown and beans rattle inside. Ideal moisture is around 13% to prevent splitting.",
+        'Tomato': "Pick at the breaker stage (showing slight color) for long transport, or fully red for immediate local market sale.",
+        'Potato': "Destroy vines 10-15 days before digging to allow the skin to set securely and reduce tuber damage during harvest."
+    }
+    return tips_db.get(crop, f"Monitor {crop} moisture levels closely before harvest. Ensure equipment is serviced to prevent field losses.")
 
 def get_weather_data(): return {"temp": "28°C", "condition": "Partly Cloudy", "humidity": "65%"}
 
@@ -385,8 +371,7 @@ elif st.session_state.page == 'Profile':
                  st.markdown(f"<h2 style='color:#A3E635 !important;'>Ready for Harvest!</h2>", unsafe_allow_html=True)
         with c_h2:
              st.markdown(f"<h3>🌾 {t('tips')}</h3>", unsafe_allow_html=True)
-             with st.spinner("Generating..."):
-                 st.info(get_harvesting_tips())
+             st.info(get_harvesting_tips()) # Instant load, no API call
         st.markdown("</div>", unsafe_allow_html=True)
 
 # ================= PAGE: SETTING =================

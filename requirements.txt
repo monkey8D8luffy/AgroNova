@@ -3,3 +3,4 @@ google-generativeai>=0.8.0
 python-dotenv
 Pillow
 requests
+demo_mode': demo_mode
